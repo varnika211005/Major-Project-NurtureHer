@@ -1,0 +1,23 @@
+{
+    "model": "Random Forest",
+    "target": "PCOS (Y/N)",
+    "features": [
+        " Age (yrs)",
+        "BMI",
+        "Cycle(R/I)",
+        "Cycle length(days)",
+        "Weight gain(Y/N)",
+        "hair growth(Y/N)",
+        "Skin darkening (Y/N)",
+        "Hair loss(Y/N)",
+        "Pimples(Y/N)"
+    ],
+    "dataset_records": 1997,
+    "test_accuracy": 0.975,
+    "cv_accuracy": 0.9785,
+    "cv_std": 0.0049,
+    "excluded_cycle_values": [
+        5
+    ],
+    "model_version": "1.0"
+}

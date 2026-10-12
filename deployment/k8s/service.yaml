@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nurtureher-api
+spec:
+  selector:
+    app: nurtureher-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+

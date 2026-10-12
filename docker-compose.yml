@@ -1,0 +1,54 @@
+services:
+  api:
+    build: .
+    container_name: nurtureher-api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - .:/app
+
+  worker:
+    build: .
+    container_name: nurtureher-worker
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    depends_on:
+      - api
+      - redis
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:16-alpine
+    container_name: nurtureher-db
+    environment:
+      POSTGRES_USER: nurtureher
+      POSTGRES_PASSWORD: nurtureher
+      POSTGRES_DB: nurtureher
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nurtureher -d nurtureher"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: nurtureher-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+

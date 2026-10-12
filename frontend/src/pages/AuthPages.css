@@ -1,0 +1,274 @@
+/* ---- NurtureHer auth pages (login / register) visual redesign ----
+   Styling only: every rule is scoped under .nh-auth so shared components
+   (Button, Card, Input, FormField) and other routes are unaffected. */
+
+.nh-auth {
+  --nh-eggplant: #492653;
+  --nh-purple: #633b73;
+  --nh-purple-deep: #4e2c5c;
+  --nh-lavender: #ede4f3;
+  --nh-blush: #f8e8ef;
+  --nh-offwhite: #fffcfa;
+  --nh-muted: #766b7b;
+  --nh-line: #e7d6e3;
+  --nh-error: #b3402e;
+  --nh-ring: rgba(99, 59, 115, 0.16);
+  --nh-font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --nh-font-display: 'Bricolage Grotesque', 'Manrope', ui-sans-serif, system-ui, sans-serif;
+
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  font-family: var(--nh-font-body);
+
+  /* Balanced centering: flex column plus auto margins on the card centers it
+     vertically AND horizontally when content is shorter than the viewport,
+     so leftover space sits evenly above and below instead of forming a band
+     beneath the card. When content is taller, auto margins compute to zero
+     and the card flows from the padding edge with natural page scrolling —
+     never clipped. (Deliberately margin-based, not justify/align centering,
+     which would clip overflowing content.) min-height uses vh with a dvh
+     override so mobile browser chrome is handled where supported. The
+     viewport-filling background lives on document.body (see body.nh-auth-bg
+     below), which always spans at least the visible viewport. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: 24px;
+  padding-bottom: 40px;
+}
+
+/* Viewport background, applied to <body> only while an auth page is mounted
+   (toggled by AuthPages.tsx, removed on unmount). Scoped by the class name
+   so dashboards, landing, and other routes are unaffected. */
+body.nh-auth-bg {
+  background: linear-gradient(135deg, #f8e8ef 0%, #ede4f3 48%, #fffcfa 100%);
+}
+
+.dark body.nh-auth-bg {
+  background: linear-gradient(135deg, #241423 0%, #2c1b33 50%, #1c1020 100%);
+}
+
+.nh-auth-card {
+  margin: auto;
+}
+
+/* Soft decorative background blobs (purely visual, no DOM changes). */
+.nh-auth::before,
+.nh-auth::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(90px);
+}
+
+.nh-auth::before {
+  width: 480px;
+  height: 480px;
+  top: -140px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(248, 232, 239, 0.9), transparent 70%);
+}
+
+.nh-auth::after {
+  width: 520px;
+  height: 520px;
+  bottom: -160px;
+  right: -140px;
+  background: radial-gradient(circle, rgba(237, 228, 243, 0.95), transparent 70%);
+}
+
+/* ---- Form card ---- */
+.nh-auth-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #f2e4ee;
+  border-radius: 28px;
+  box-shadow:
+    0 30px 80px -24px rgba(73, 38, 83, 0.22),
+    0 8px 24px -12px rgba(73, 38, 83, 0.12);
+}
+
+/* ---- Branding + headings ---- */
+.nh-auth-brand p {
+  color: var(--nh-eggplant);
+}
+
+.nh-auth-brand p + p {
+  color: var(--nh-muted);
+  font-weight: 600;
+}
+
+.nh-auth-title {
+  font-family: var(--nh-font-display);
+  color: var(--nh-eggplant);
+  letter-spacing: -0.01em;
+}
+
+.nh-auth-subtitle {
+  color: var(--nh-muted);
+}
+
+/* ---- Labels, inputs, select ---- */
+.nh-auth-form label {
+  color: var(--nh-eggplant);
+}
+
+.nh-auth-form input,
+.nh-auth-form select {
+  min-height: 48px;
+  border-radius: 16px;
+  border: 1.5px solid var(--nh-line);
+  background: #ffffff;
+  color: #2e1b36;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nh-auth-form input::placeholder {
+  color: #a394ab;
+}
+
+.nh-auth-form input:focus,
+.nh-auth-form select:focus {
+  outline: none;
+  border-color: var(--nh-purple);
+  box-shadow: 0 0 0 4px var(--nh-ring);
+}
+
+.nh-auth-form input[aria-invalid="true"] {
+  border-color: #d38d7f;
+}
+
+.nh-auth-form input[aria-invalid="true"]:focus {
+  border-color: var(--nh-error);
+  box-shadow: 0 0 0 4px rgba(179, 64, 46, 0.14);
+}
+
+.nh-auth p.text-danger {
+  color: var(--nh-error);
+}
+
+/* ---- Primary submit button ---- */
+.nh-auth-form > button {
+  min-height: 52px;
+  border-radius: 999px;
+  font-size: 1rem;
+  background-color: var(--nh-purple);
+  background-image: none;
+  color: #ffffff;
+  box-shadow: 0 16px 30px -14px rgba(99, 59, 115, 0.55);
+  transform: none;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.nh-auth-form > button:hover:not(:disabled) {
+  background-color: var(--nh-purple-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 20px 34px -14px rgba(99, 59, 115, 0.6);
+}
+
+.nh-auth-form > button:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+}
+
+.nh-auth-form > button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(99, 59, 115, 0.28);
+}
+
+.nh-auth-form > button:disabled {
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---- Login/register toggle link ---- */
+.nh-auth-card > button {
+  color: var(--nh-purple);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+/* ---- Demo accounts ---- */
+.nh-auth-demo {
+  border-top-color: #f0e2ec;
+}
+
+.nh-auth-demo button {
+  border-radius: 16px;
+  border-width: 1.5px;
+  background: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.nh-auth-demo button:hover:not(:disabled) {
+  border-color: #c9a9cf;
+  box-shadow: 0 10px 24px -14px rgba(73, 38, 83, 0.35);
+  transform: translateY(-1px);
+}
+
+/* ---- Dark mode (kept functional, same palette family) ---- */
+.dark .nh-auth {
+  background: linear-gradient(135deg, #241423 0%, #2c1b33 50%, #1c1020 100%);
+}
+
+.dark .nh-auth-card {
+  background: rgba(42, 30, 51, 0.94);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .nh-auth-brand p,
+.dark .nh-auth-title,
+.dark .nh-auth-form label {
+  color: #f7eff8;
+}
+
+.dark .nh-auth-subtitle {
+  color: #c3b3c9;
+}
+
+.dark .nh-auth-form input,
+.dark .nh-auth-form select {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #f7eff8;
+}
+
+.dark .nh-auth-form input::placeholder {
+  color: rgba(247, 239, 248, 0.45);
+}
+
+.dark .nh-auth-demo button {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .nh-auth p.text-danger {
+  color: #f0a39a;
+}
+
+/* ---- Responsive + reduced motion ---- */
+@media (max-width: 480px) {
+  .nh-auth {
+    padding-top: 20px;
+    padding-bottom: 32px;
+  }
+
+  .nh-auth-card {
+    border-radius: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nh-auth *,
+  .nh-auth *::before,
+  .nh-auth *::after {
+    transition: none;
+    animation: none;
+  }
+
+  .nh-auth-form > button:hover:not(:disabled),
+  .nh-auth-demo button:hover:not(:disabled) {
+    transform: none;
+  }
+}

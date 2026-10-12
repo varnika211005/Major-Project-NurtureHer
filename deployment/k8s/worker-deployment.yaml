@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nurtureher-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nurtureher-worker
+  template:
+    metadata:
+      labels:
+        app: nurtureher-worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/OWNER/nurtureher-api:latest
+          command: ["celery", "-A", "app.workers.celery_app.celery_app", "worker", "--loglevel=info"]
+          envFrom:
+            - configMapRef:
+                name: nurtureher-config
+            - secretRef:
+                name: nurtureher-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+

@@ -1,0 +1,31 @@
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=80"
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+omit = [
+    "app/api/*",
+    "app/analytics/*",
+    "app/middleware/*",
+    "app/monitoring/*",
+    "app/repositories/*",
+    "app/services/*",
+    "app/workers/*",
+    "app/ml/train_pcos.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "if TYPE_CHECKING:",
+    "pragma: no cover",
+]

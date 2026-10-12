@@ -1,0 +1,59 @@
+.venv/
+.venv312/
+venv/
+
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+*.log
+backups/
+postgres_data/
+redis_data/
+prometheus_data/
+grafana_data/
+
+# Private configuration and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# JavaScript
+node_modules/
+dist/
+build/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Editor and operating-system files
+.vscode/
+.DS_Store
+Thumbs.db

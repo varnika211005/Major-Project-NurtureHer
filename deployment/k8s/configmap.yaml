@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nurtureher-config
+data:
+  PROJECT_NAME: NurtureHer
+  ENVIRONMENT: production
+  API_V1_PREFIX: /api/v1
+  BACKEND_CORS_ORIGINS: https://app.example.com
+  GEMINI_MODEL: gemini-3.6-flash
+  SMS_PROVIDER: twilio
+  METRICS_ENABLED: "true"
+

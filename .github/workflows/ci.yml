@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nurtureher
+          POSTGRES_PASSWORD: nurtureher
+          POSTGRES_DB: nurtureher_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nurtureher -d nurtureher_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Lint
+        run: ruff check .
+      - name: Test
+        env:
+          DATABASE_URL: postgresql+asyncpg://nurtureher:nurtureher@localhost:5432/nurtureher_test
+          SYNC_DATABASE_URL: postgresql://nurtureher:nurtureher@localhost:5432/nurtureher_test
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET_KEY: test-secret-key-change-me
+        run: pytest -q
+      - name: Generate OpenAPI
+        run: python scripts/ops/generate_openapi.py

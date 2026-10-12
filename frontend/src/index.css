@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color: #492653;
+    background: #FFFCFA;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark {
+    color: #F8F7FF;
+    background: #1A1020;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: #FFFCFA;
+    color: #492653;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  /* Accessible focus indicators */
+  :focus-visible {
+    outline: 2px solid #633B73;
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 252, 250, 0.85)),
+      rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(237, 228, 243, 0.9);
+    box-shadow: 0 16px 48px rgba(99, 59, 115, 0.08);
+    backdrop-filter: blur(24px);
+  }
+
+  .dark .glass {
+    background: rgba(26, 20, 48, 0.85);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(99, 59, 115, 0.45), rgba(171, 143, 199, 0.35), rgba(255, 255, 255, 0.8));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .premium-gradient {
+    background:
+      linear-gradient(135deg, rgba(201, 169, 207, 0.28), transparent 32%),
+      linear-gradient(225deg, rgba(237, 228, 243, 0.5), transparent 38%),
+      linear-gradient(180deg, rgba(201, 133, 120, 0.06), transparent 44%),
+      linear-gradient(135deg, #F8E8EF 0%, #FFFFFF 46%, #FFFCFA 100%);
+  }
+
+  .dark .premium-gradient {
+    background:
+      linear-gradient(135deg, rgba(99, 59, 115, 0.35), transparent 34%),
+      linear-gradient(225deg, rgba(171, 143, 199, 0.16), transparent 36%),
+      linear-gradient(135deg, #1A1020 0%, #241423 52%, #160C1B 100%);
+  }
+
+  .soft-grid {
+    background-image:
+      linear-gradient(rgba(99, 59, 115, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99, 59, 115, 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .noise {
+    background-image:
+      linear-gradient(135deg, rgba(99, 59, 115, 0.06), transparent 36%),
+      linear-gradient(225deg, rgba(171, 143, 199, 0.06), transparent 42%);
+  }
+
+  .surface-shine {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .surface-shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.35), transparent 34%, rgba(255, 255, 255, 0.15));
+    pointer-events: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
