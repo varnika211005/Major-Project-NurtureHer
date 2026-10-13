@@ -6,6 +6,7 @@ import {
   CalendarHeart,
   Check,
   ChevronRight,
+  Compass,
   Download,
   HeartPulse,
   LifeBuoy,
@@ -333,6 +334,22 @@ export function Dashboard() {
             <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">Printable PDF & CSV export.</p>
             <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
               View reports <ChevronRight className="ml-0.5 h-3 w-3" />
+            </span>
+          </div>
+
+          {/* Card 7: HerReach Healthcare Discovery */}
+          <div
+            id="mother-dashboard-herreach-card"
+            onClick={() => navigate("/herreach")}
+            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-white/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft dark:border-white/10 dark:bg-card"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender-100 text-primary transition group-hover:bg-primary group-hover:text-white dark:bg-white/10">
+              <Compass className="h-5 w-5" />
+            </div>
+            <h3 className="mt-3 text-xs font-black text-ink dark:text-white">HerReach Discovery</h3>
+            <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">Smart nearby facilities & care finder.</p>
+            <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
+              Find facilities <ChevronRight className="ml-0.5 h-3 w-3" />
             </span>
           </div>
         </div>

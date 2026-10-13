@@ -14,6 +14,7 @@ const NutritionPage = lazy(() => import("@/pages/NutritionPage").then((m) => ({ 
 const CareCircleQR = lazy(() => import("@/pages/CareCircleQR").then((m) => ({ default: m.CareCircleQRPage })));
 const DoctorVisitAssistant = lazy(() => import("@/pages/DoctorVisitAssistant").then((m) => ({ default: m.DoctorVisitAssistant })));
 const CaregiverPage = lazy(() => import("@/pages/CaregiverPage").then((m) => ({ default: m.CaregiverPage })));
+const HerReachPage = lazy(() => import("@/pages/HerReach").then((m) => ({ default: m.HerReachPage })));
 
 const Coach = lazy(() => import("@/pages/Coach").then((m) => ({ default: m.Coach })));
 const PCOSPage = lazy(() => import("@/pages/ClinicalPages").then((m) => ({ default: m.PCOSPage })));
@@ -79,6 +80,7 @@ export default function App() {
             <Route path="/doctor-visit" element={<DoctorVisitAssistant />} />
             <Route path="/carecircle" element={<CareCircleQR />} />
             <Route path="/caregiver" element={<CaregiverPage />} />
+            <Route path="/herreach" element={<HerReachPage />} />
             <Route path="/emergency" element={<EmergencyPage />} />
             <Route path="/reports" element={<ReportsZone />} />
 

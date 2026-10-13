@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     pcos_model_path: str = "app/ml/artifacts/pcos_random_forest.pkl"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-1.5-flash"
+    google_maps_api_key: str | None = None
     sms_provider: str = "twilio"
     twilio_account_sid: str | None = None
     twilio_auth_token: str | None = None

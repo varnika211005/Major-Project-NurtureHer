@@ -139,6 +139,61 @@ export type DoctorVisitSummary = {
   disclaimer: string;
 };
 
+export type FacilityItem = {
+  id: string;
+  name: string;
+  facility_type: string;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  distance_km: number | null;
+  contact_number: string | null;
+  opening_hours: string | null;
+  directions_url: string;
+  rating: number | null;
+  user_ratings_total: number | null;
+  is_emergency: boolean;
+};
+
+export type OfficialHelpline = {
+  title: string;
+  number: string;
+  description: string;
+  category: string;
+};
+
+export type FacilitySearchResponse = {
+  is_live_provider: boolean;
+  provider_status: string;
+  provider_name: string;
+  total_found: number;
+  query: string | null;
+  category: string | null;
+  location_searched: string | null;
+  external_search_url: string;
+  facilities: FacilityItem[];
+  official_helplines: OfficialHelpline[];
+};
+
+export type ConcernRecommendation = {
+  concern_key: string;
+  concern_title: string;
+  detected_assessment_basis: string | null;
+  suggested_facility_types: string[];
+  recommended_category: string;
+  clinical_safety_notice: string;
+};
+
+export type HerReachRecommendationsResponse = {
+  user_role: string;
+  has_pcos_data: boolean;
+  has_ppd_data: boolean;
+  has_pregnancy_data: boolean;
+  clinical_disclaimer: string;
+  recommendations: ConcernRecommendation[];
+  available_categories: string[];
+};
+
 let accessToken = sessionStorage.getItem("nurtureher_access_token");
 let refreshToken = sessionStorage.getItem("nurtureher_refresh_token");
 
@@ -242,6 +297,21 @@ export const api = {
   adminUsers: () => request<User[]>("/admin/users"),
   adminAuditLogs: () => request<Record<string, unknown>[]>("/admin/audit-logs"),
   adminDashboard: () => request<Record<string, unknown>>("/admin/dashboard"),
+
+  // HerReach Healthcare Discovery
+  herreachFacilities: (params: { query?: string; category?: string; lat?: number; lng?: number; area?: string; radius?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.query) searchParams.set("query", params.query);
+    if (params.category) searchParams.set("category", params.category);
+    if (params.lat !== undefined && params.lat !== null) searchParams.set("lat", String(params.lat));
+    if (params.lng !== undefined && params.lng !== null) searchParams.set("lng", String(params.lng));
+    if (params.area) searchParams.set("area", params.area);
+    if (params.radius) searchParams.set("radius", String(params.radius));
+    const qs = searchParams.toString();
+    return request<FacilitySearchResponse>(qs ? `/herreach/facilities?${qs}` : "/herreach/facilities");
+  },
+  herreachRecommendations: () => request<HerReachRecommendationsResponse>("/herreach/recommendations"),
+  herreachHelplines: () => request<OfficialHelpline[]>("/herreach/helplines"),
 
   // Notifications
   notifications: () => request<Alert[]>("/notifications"),
