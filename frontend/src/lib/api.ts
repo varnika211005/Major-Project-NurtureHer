@@ -282,6 +282,7 @@ export const api = {
   getCareCircleQR: () => request<{ token: string; qr_payload: string; expires_at: string }>("/carecircle/qr"),
   generateCareCircleQR: () => request<{ token: string; qr_payload: string; expires_at: string; message: string }>("/carecircle/qr/generate", { method: "POST" }),
   requestCareCircleAccess: (token: string, relationship_label = "Caregiver") => request<{ id: string; status: string; message: string }>("/carecircle/request-access", { method: "POST", body: JSON.stringify({ token, relationship_label }) }),
+  careCircleRequestStatus: (requestId: string) => request<{ id: string; status: string }>(`/carecircle/requests/${requestId}/status`),
   careCircleRequests: () => request<CareCircleRequestItem[]>("/carecircle/requests"),
   respondCareCircleRequest: (requestId: string, action: "approve" | "reject", scopes?: { share_emergency?: boolean; share_risk_category?: boolean; share_wellness_summary?: boolean }) => request<{ id: string; status: string; message: string }>(`/carecircle/requests/${requestId}/respond`, { method: "POST", body: JSON.stringify({ action, ...(scopes || {}) }) }),
   revokeCareCircleAccess: (requestId: string) => request<{ id: string; status: string; message: string }>(`/carecircle/requests/${requestId}/revoke`, { method: "POST" }),

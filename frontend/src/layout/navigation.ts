@@ -103,8 +103,8 @@ export function getNavigationSections(t: TranslationSchema, role = "mother"): Na
         title: "Care Companion",
         items: [
           { key: "caregiver", label: "Caregiver Companion", path: "/caregiver", icon: Baby },
+          { key: "carecircle-connect", label: "Connect to Mother", path: "/caregiver?tab=connect", icon: QrCode },
           { key: "herreach", label: "HerReach Facility Finder", path: "/herreach", icon: Compass },
-          { key: "carecircle", label: "CareCircle TrustVault", path: "/carecircle", icon: QrCode },
           { key: "coach", label: "Family Coach", path: "/coach", icon: Bot },
         ],
       },

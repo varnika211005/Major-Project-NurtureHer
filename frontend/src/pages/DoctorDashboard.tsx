@@ -46,9 +46,9 @@ interface PatientTimelineData {
     emergency_contact: string | null;
   };
   moods: Array<{ id: string; mood: string; note: string | null; created_at: string }>;
-  symptoms: Array<{ id: string; fatigue: boolean; headache: boolean; sleep_issue: boolean; anxiety: boolean; cramps: boolean; created_at: string }>;
-  pcos_screenings: Array<{ id: string; risk_level: string; probability: number; recommendations: string; created_at: string }>;
-  ppd_screenings: Array<{ id: string; risk_level: string; epds_score: number; sentiment: string; created_at: string }>;
+  symptoms: Array<{ id: string; fatigue: boolean; headache?: boolean; sleep_issue: boolean; anxiety: boolean; cramps?: boolean; created_at: string }>;
+  pcos_screenings: Array<{ id: string; risk_level: string; probability?: number; recommendations?: string; created_at: string }>;
+  ppd_screenings: Array<{ id: string; risk_level: string; epds_score?: number; sentiment?: string; created_at: string }>;
   cycles: Array<{ id: string; last_period_date: string; cycle_length: number; next_period_prediction: string }>;
   doctor_notes: Array<{ id: string; clinical_observations: string; follow_up_recommendation: string | null; prescribed_advice: string | null; created_at: string }>;
 }
@@ -143,10 +143,13 @@ export function DoctorDashboard() {
       const ppdHigh = p.latest_ppd_risk.toLowerCase().includes("high");
       const pcosMod = p.latest_pcos_risk.toLowerCase().includes("mod");
       const ppdMod = p.latest_ppd_risk.toLowerCase().includes("mod");
+      const hasSharedRisk = [p.latest_pcos_risk, p.latest_ppd_risk].some(
+        (risk) => risk !== "Not shared" && risk !== "Not screened",
+      );
 
       if (riskFilter === "high") return pcosHigh || ppdHigh;
       if (riskFilter === "moderate") return pcosMod || ppdMod;
-      if (riskFilter === "low") return !pcosHigh && !ppdHigh && !pcosMod && !ppdMod;
+      if (riskFilter === "low") return hasSharedRisk && !pcosHigh && !ppdHigh && !pcosMod && !ppdMod;
       return true;
     });
   }, [patients, searchQuery, riskFilter]);
@@ -171,7 +174,7 @@ export function DoctorDashboard() {
           type: "PCOS",
           date: new Date(p.created_at).toLocaleDateString(),
           risk_level: p.risk_level,
-          score: `${Math.round(p.probability * 100)}% risk probability`,
+          score: p.probability === undefined ? `${p.risk_level} risk category` : `${Math.round(p.probability * 100)}% risk probability`,
           recommendations: p.recommendations,
         })),
         ...patient.ppd_screenings.map((d) => ({
@@ -179,7 +182,7 @@ export function DoctorDashboard() {
           type: "PPD",
           date: new Date(d.created_at).toLocaleDateString(),
           risk_level: d.risk_level,
-          score: `EPDS Score: ${d.epds_score}/30`,
+          score: d.epds_score === undefined ? `${d.risk_level} risk category` : `EPDS Score: ${d.epds_score}/30`,
           sentiment: d.sentiment,
         })),
       ],
@@ -355,8 +358,14 @@ export function DoctorDashboard() {
                     <tbody className="divide-y divide-lavender-100 dark:divide-white/10">
                       {filteredPatients.map((patient) => {
                         const isSelected = selectedPatientId === patient.id;
-                        const pcosHigh = patient.latest_pcos_risk.toLowerCase().includes("high");
-                        const ppdHigh = patient.latest_ppd_risk.toLowerCase().includes("high");
+                        const riskBadgeClass = (risk: string, highClass: string, moderateClass: string) =>
+                          risk.toLowerCase().includes("high")
+                            ? highClass
+                            : risk.toLowerCase().includes("mod")
+                            ? moderateClass
+                            : risk === "Not shared" || risk === "Not screened"
+                            ? "bg-lavender-100 text-muted dark:bg-white/10 dark:text-white/60"
+                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300";
 
                         return (
                           <tr
@@ -382,26 +391,14 @@ export function DoctorDashboard() {
                             </td>
                             <td className="px-4 py-3.5">
                               <span
-                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
-                                  pcosHigh
-                                    ? "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300"
-                                    : patient.latest_pcos_risk.toLowerCase().includes("mod")
-                                    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-                                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-                                }`}
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${riskBadgeClass(patient.latest_pcos_risk, "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300", "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300")}`}
                               >
                                 {patient.latest_pcos_risk}
                               </span>
                             </td>
                             <td className="px-4 py-3.5">
                               <span
-                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
-                                  ppdHigh
-                                    ? "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300"
-                                    : patient.latest_ppd_risk.toLowerCase().includes("mod")
-                                    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-                                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-                                }`}
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${riskBadgeClass(patient.latest_ppd_risk, "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300", "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300")}`}
                               >
                                 {patient.latest_ppd_risk}
                               </span>
@@ -505,11 +502,14 @@ export function DoctorDashboard() {
                               <span className="capitalize text-primary">{p.risk_level}</span>
                             </div>
                             <p className="mt-1 text-[11px] text-muted dark:text-white/60">
-                              Probability: {Math.round(p.probability * 100)}% · {new Date(p.created_at).toLocaleDateString()}
+                              {p.probability === undefined ? "" : `Probability: ${Math.round(p.probability * 100)}% · `}
+                              {new Date(p.created_at).toLocaleDateString()}
                             </p>
-                            <p className="mt-1 text-[11px] italic text-muted dark:text-white/50 line-clamp-2">
-                              {p.recommendations}
-                            </p>
+                            {p.recommendations && (
+                              <p className="mt-1 text-[11px] italic text-muted dark:text-white/50 line-clamp-2">
+                                {p.recommendations}
+                              </p>
+                            )}
                           </div>
                         ))
                       ) : (
@@ -524,7 +524,9 @@ export function DoctorDashboard() {
                               <span className="capitalize text-amber-600 dark:text-amber-300">{d.risk_level}</span>
                             </div>
                             <p className="mt-1 text-[11px] text-muted dark:text-white/60">
-                              EPDS Score: {d.epds_score}/30 · Sentiment: {d.sentiment}
+                              {d.epds_score === undefined ? "" : `EPDS Score: ${d.epds_score}/30 · `}
+                              {d.sentiment ? `Sentiment: ${d.sentiment} · ` : ""}
+                              {new Date(d.created_at).toLocaleDateString()}
                             </p>
                           </div>
                         ))

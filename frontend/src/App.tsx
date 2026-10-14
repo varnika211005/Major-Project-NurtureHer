@@ -78,7 +78,7 @@ export default function App() {
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/nutrition" element={<NutritionPage />} />
             <Route path="/doctor-visit" element={<DoctorVisitAssistant />} />
-            <Route path="/carecircle" element={<CareCircleQR />} />
+            <Route path="/carecircle" element={user.role === "mother" ? <CareCircleQR /> : <Navigate to="/" replace />} />
             <Route path="/caregiver" element={<CaregiverPage />} />
             <Route path="/herreach" element={<HerReachPage />} />
             <Route path="/emergency" element={<EmergencyPage />} />

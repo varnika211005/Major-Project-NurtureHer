@@ -1,5 +1,7 @@
-import { AlertTriangle, Baby, CheckCircle2, Compass, ExternalLink, Heart, HelpCircle, LifeBuoy, LocateFixed, Lock, MapPin, Navigation, Phone, PhoneCall, RefreshCw, Search, ShieldAlert, Sparkles, UserCheck, Video, X } from "lucide-react";
+import { AlertTriangle, Baby, CheckCircle2, Compass, ExternalLink, Heart, HelpCircle, LifeBuoy, LocateFixed, Lock, MapPin, Navigation, Phone, PhoneCall, QrCode, RefreshCw, Search, ShieldAlert, Sparkles, UserCheck, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { CareCircleConnect } from "@/components/CareCircleConnect";
 import { api, CaregiverContent, FacilityItem, OfficialHelpline } from "@/lib/api";
 import { useAuth } from "@/context/useAuth";
 import { useLanguage } from "@/context/useLanguage";
@@ -11,15 +13,30 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
+type CaregiverConnection = {
+  access_id: string;
+  mother_id: string;
+  mother_name: string;
+  relationship_label: string;
+  permissions: Record<string, boolean>;
+};
+
 export function CaregiverPage() {
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { t } = useLanguage();
   const [items, setItems] = useState<CaregiverContent[]>([]);
-  const [connections, setConnections] = useState<Array<{ access_id: string; mother_name: string; relationship_label: string; permissions: Record<string, boolean> }>>([]);
+  const [connections, setConnections] = useState<CaregiverConnection[]>([]);
   const [sharedSummary, setSharedSummary] = useState<Record<string, unknown> | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"education" | "warning-signs" | "support-checklist" | "shared-status" | "herreach">("education");
+  const [activeTab, setActiveTab] = useState<"education" | "warning-signs" | "support-checklist" | "shared-status" | "connect" | "herreach">(
+    searchParams.get("tab") === "connect" ? "connect" : "education",
+  );
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (searchParams.get("tab") === "connect") setActiveTab("connect");
+  }, [searchParams]);
 
   // Daily support checklist state
   const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({
@@ -63,6 +80,17 @@ export function CaregiverPage() {
       setSharedSummary(null);
     }
   }
+
+  async function handleConnectionApproved(accessId: string) {
+    const refreshedConnections = await api.careCircleConnections();
+    setConnections(refreshedConnections);
+    const connection = refreshedConnections.find((item) => item.access_id === accessId);
+    if (!connection) return;
+    setSelectedConnection(accessId);
+    setSharedSummary(await api.careCircleSharedSummary(accessId));
+  }
+
+  const activeConnection = connections.find((connection) => connection.access_id === selectedConnection);
 
   const toggleTask = (taskId: string) => {
     setCheckedTasks((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
@@ -156,6 +184,17 @@ export function CaregiverPage() {
           }`}
         >
           <UserCheck className="h-4 w-4 text-primary" /> Mother's Permitted Status ({connections.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("connect")}
+          className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-black transition ${
+            activeTab === "connect"
+              ? "bg-primary text-white shadow-glow"
+              : "bg-white text-ink hover:bg-lavender-50 dark:bg-white/10 dark:text-white"
+          }`}
+        >
+          <QrCode className="h-4 w-4 text-primary" /> Connect to Mother
         </button>
         <button
           id="caregiver-herreach-tab"
@@ -350,56 +389,140 @@ export function CaregiverPage() {
 
                   {/* Summary Card */}
                   {sharedSummary ? (
-                    <Card>
-                      <SectionHeader
-                        title={`Shared Health Status: ${String(sharedSummary.mother_name ?? "Mother")}`}
-                        subtitle="Filtered by the mother's explicit consent preferences"
-                      />
-
-                      <div className="grid gap-5 md:grid-cols-3">
-                        {Boolean(sharedSummary.emergency) && (
-                          <div className="rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                            <Badge className="mb-2">EMERGENCY SOS</Badge>
-                            <p className="text-xs font-bold text-muted">Emergency Contact:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {String((sharedSummary.emergency as Record<string, string>).emergency_contact)}
-                            </p>
-                            <p className="mt-2 text-xs font-bold text-muted">Blood Group:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {String((sharedSummary.emergency as Record<string, string>).blood_group)}
+                    <div className="space-y-5">
+                      <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-lavender-50 to-white dark:from-white/10 dark:to-white/5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-primary">CareCircle connection</p>
+                            <h2 className="mt-1 text-2xl font-black text-ink dark:text-white">
+                              {String(sharedSummary.mother_name ?? activeConnection?.mother_name ?? "Mother")}
+                            </h2>
+                            <p className="mt-1 text-sm text-muted dark:text-white/60">
+                              {activeConnection?.relationship_label ?? String(sharedSummary.relationship_label ?? "Caregiver")}
                             </p>
                           </div>
+                          <Badge className="w-fit bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                            Approved by mother
+                          </Badge>
+                        </div>
+                        <div className="mt-5 border-t border-lavender-200 pt-4 dark:border-white/10">
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted dark:text-white/60">Permitted sharing</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {[
+                              ["emergency", "Emergency details"],
+                              ["risk_category", "Screening categories"],
+                              ["wellness_summary", "Wellness summary"],
+                            ].map(([key, label]) => {
+                              const permitted = Boolean(activeConnection?.permissions[key]);
+                              return (
+                                <span
+                                  key={key}
+                                  className={`rounded-full px-3 py-1 text-xs font-bold ${permitted ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-lavender-100 text-muted dark:bg-white/10 dark:text-white/60"}`}
+                                >
+                                  {label}: {permitted ? "Shared" : "Not shared"}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </Card>
+
+                      <div className="grid gap-4 lg:grid-cols-3">
+                        {Boolean(sharedSummary.emergency) && (
+                          <Card className="h-full border-rose-200/80 dark:border-rose-900/30">
+                            <div className="flex items-center gap-2">
+                              <PhoneCall className="h-4 w-4 text-rose-600" />
+                              <h3 className="text-sm font-black text-ink dark:text-white">Emergency information</h3>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                              <div>
+                                <p className="text-xs font-bold text-muted">Emergency contact</p>
+                                <p className="mt-0.5 break-words text-sm font-bold text-ink dark:text-white">
+                                  {String((sharedSummary.emergency as Record<string, string>).emergency_contact ?? "Not configured")}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-muted">Blood group</p>
+                                <p className="mt-0.5 text-sm font-bold text-ink dark:text-white">
+                                  {String((sharedSummary.emergency as Record<string, string>).blood_group ?? "Not recorded")}
+                                </p>
+                              </div>
+                              <a href="tel:112" className="inline-flex items-center gap-1 text-xs font-black text-rose-700 hover:underline dark:text-rose-300">
+                                Emergency services: 112
+                              </a>
+                            </div>
+                          </Card>
                         )}
 
                         {Boolean(sharedSummary.screenings) && (
-                          <div className="rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                            <Badge className="mb-2">CLINICAL SCREENING</Badge>
-                            <p className="text-xs font-bold text-muted">PCOS Risk Level:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {String((sharedSummary.screenings as Record<string, string>).pcos_risk)}
-                            </p>
-                            <p className="mt-2 text-xs font-bold text-muted">PPD Risk Level:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {String((sharedSummary.screenings as Record<string, string>).ppd_risk)}
-                            </p>
-                          </div>
+                          <Card className="h-full">
+                            <div className="flex items-center gap-2">
+                              <ShieldAlert className="h-4 w-4 text-primary" />
+                              <h3 className="text-sm font-black text-ink dark:text-white">Clinical screening categories</h3>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                              {[
+                                ["PCOS", (sharedSummary.screenings as Record<string, string>).pcos_risk],
+                                ["Postpartum wellbeing", (sharedSummary.screenings as Record<string, string>).ppd_risk],
+                              ].map(([label, value]) => (
+                                <div key={label} className="flex items-center justify-between gap-3 rounded-xl bg-lavender-50 px-3 py-2 dark:bg-white/5">
+                                  <span className="text-xs font-bold text-muted">{label}</span>
+                                  <span className="text-sm font-black capitalize text-ink dark:text-white">{String(value ?? "Not shared")}</span>
+                                </div>
+                              ))}
+                              <p className="text-[11px] leading-4 text-muted dark:text-white/50">
+                                Risk categories are screening information, not a diagnosis.
+                              </p>
+                            </div>
+                          </Card>
                         )}
 
                         {Boolean(sharedSummary.wellness) && (
-                          <div className="rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                            <Badge className="mb-2">WELLNESS & ENERGY</Badge>
-                            <p className="text-xs font-bold text-muted">Today's Mood:</p>
-                            <p className="text-sm font-black capitalize text-ink dark:text-white">
-                              {String((sharedSummary.wellness as Record<string, string>).today_mood)}
-                            </p>
-                            <p className="mt-2 text-xs font-bold text-muted">Recent Fatigue:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {(sharedSummary.wellness as Record<string, boolean>).recent_fatigue ? "Fatigue reported" : "Normal energy"}
-                            </p>
-                          </div>
+                          <Card className="h-full">
+                            <div className="flex items-center gap-2">
+                              <Heart className="h-4 w-4 text-rose-500" />
+                              <h3 className="text-sm font-black text-ink dark:text-white">Wellness and energy</h3>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                              <div>
+                                <p className="text-xs font-bold text-muted">Most recent mood</p>
+                                <p className="mt-0.5 text-sm font-black capitalize text-ink dark:text-white">
+                                  {String((sharedSummary.wellness as Record<string, string>).today_mood ?? "Not logged")}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-muted">Recent indicators</p>
+                                <div className="mt-1 flex flex-wrap gap-1.5">
+                                  {[
+                                    ["recent_fatigue", "Fatigue"],
+                                    ["recent_sleep_issue", "Sleep difficulty"],
+                                    ["recent_anxiety", "Anxiety"],
+                                  ].map(([key, label]) => (
+                                    <Badge key={key} className={(sharedSummary.wellness as Record<string, boolean>)[key] ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" : ""}>
+                                      {label}: {(sharedSummary.wellness as Record<string, boolean>)[key] ? "Reported" : "Not reported"}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
                         )}
                       </div>
-                    </Card>
+
+                      {Boolean(sharedSummary.wellness) && (
+                        <Card className="border-emerald-200/80 bg-emerald-50/50 dark:border-emerald-900/30 dark:bg-emerald-950/10">
+                          <div className="flex items-start gap-3">
+                            <Heart className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                            <div>
+                              <h3 className="text-sm font-black text-ink dark:text-white">Everyday support</h3>
+                              <p className="mt-1 text-xs leading-5 text-muted dark:text-white/60">
+                                Check in gently, offer practical help with meals or baby care, and make space for rest. For urgent concerns or worsening symptoms, contact a qualified healthcare professional.
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      )}
+                    </div>
                   ) : (
                     <LoadingSkeleton />
                   )}
@@ -407,6 +530,8 @@ export function CaregiverPage() {
               )}
             </div>
           )}
+
+          {activeTab === "connect" && <CareCircleConnect onApproved={handleConnectionApproved} />}
 
           {/* TAB 5: HERREACH SIMPLE HEALTHCARE FACILITY SEARCH */}
           {activeTab === "herreach" && <CaregiverHerReachView />}
