@@ -15,17 +15,21 @@ class HealthContextBuilder:
     def __init__(self, db: AsyncSession | None = None) -> None:
         self.db = db
         self.retriever = HealthKnowledgeRetriever()
+        self.last_diagnostics = None
 
-    async def build(self, user: User, message: str, language: str) -> tuple[str, str]:
-        retrieved_context = self._format_retrieved_context(message)
+    async def build(self, user: User, message: str, language: str) -> tuple[str, str, tuple[str, ...]]:
+        retrieved_context, cited_ids = self._format_retrieved_context(message)
         user_context = await self._build_user_context(user, language)
-        return retrieved_context, user_context
+        return retrieved_context, user_context, cited_ids
 
-    def _format_retrieved_context(self, message: str) -> str:
-        documents = self.retriever.retrieve(message)
-        return "\n".join(
-            f"- [{item.document.metadata.get('category')}] {item.document.page_content}" for item in documents
+    def _format_retrieved_context(self, message: str) -> tuple[str, tuple[str, ...]]:
+        result = self.retriever.retrieve(message)
+        self.last_diagnostics = result.diagnostics
+        text = "\n".join(
+            f"- [{item.document.metadata.get('id')}] {item.document.metadata.get('title')}: " f"{item.document.page_content}"
+            for item in result.documents
         )
+        return text, result.cited_ids
 
     async def _build_user_context(self, user: User, language: str) -> str:
         lines = [
@@ -47,10 +51,16 @@ class HealthContextBuilder:
             )
 
         latest_mood = await self.db.scalar(select(Mood).where(Mood.user_id == user.id).order_by(Mood.created_at.desc()).limit(1))
-        latest_symptoms = await self.db.scalar(select(Symptom).where(Symptom.user_id == user.id).order_by(Symptom.created_at.desc()).limit(1))
+        latest_symptoms = await self.db.scalar(
+            select(Symptom).where(Symptom.user_id == user.id).order_by(Symptom.created_at.desc()).limit(1)
+        )
         latest_cycle = await self.db.scalar(select(Cycle).where(Cycle.user_id == user.id).order_by(Cycle.created_at.desc()).limit(1))
-        latest_pcos = await self.db.scalar(select(PCOSPrediction).where(PCOSPrediction.user_id == user.id).order_by(PCOSPrediction.created_at.desc()).limit(1))
-        latest_ppd = await self.db.scalar(select(PPDAssessment).where(PPDAssessment.user_id == user.id).order_by(PPDAssessment.created_at.desc()).limit(1))
+        latest_pcos = await self.db.scalar(
+            select(PCOSPrediction).where(PCOSPrediction.user_id == user.id).order_by(PCOSPrediction.created_at.desc()).limit(1)
+        )
+        latest_ppd = await self.db.scalar(
+            select(PPDAssessment).where(PPDAssessment.user_id == user.id).order_by(PPDAssessment.created_at.desc()).limit(1)
+        )
 
         if latest_mood:
             lines.append(f"Latest mood: {latest_mood.mood.value}")

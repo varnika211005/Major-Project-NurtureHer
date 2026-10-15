@@ -1,0 +1,58 @@
+{
+  "models": {
+    "minilm": {
+      "load_ms": 3158.3,
+      "latency_median_ms": 20.8,
+      "latency_p95_ms": 32.4,
+      "peak_kb": 64290,
+      "recall_at_1": 0.182,
+      "recall_at_4": 0.182,
+      "mrr": 0.398
+    },
+    "mpnet": {
+      "load_ms": 1170.7,
+      "latency_median_ms": 91.7,
+      "latency_p95_ms": 102.9,
+      "peak_kb": 161,
+      "recall_at_1": 0.636,
+      "recall_at_4": 0.636,
+      "mrr": 0.804
+    }
+  },
+  "by_language": {
+    "minilm": {
+      "en:native": 1.0,
+      "hi:native": 0.0,
+      "hi:romanized": 0.0,
+      "kn:native": 0.0,
+      "kn:romanized": 1.0,
+      "ml:native": 0.0,
+      "ta:native": 0.0,
+      "ta:romanized": 1.0,
+      "te:native": 0.0,
+      "te:romanized": 0.0
+    },
+    "mpnet": {
+      "en:native": 1.0,
+      "hi:native": 0.833,
+      "hi:romanized": 1.0,
+      "kn:native": 0.667,
+      "kn:romanized": 0.0,
+      "ml:native": 0.5,
+      "ta:native": 0.667,
+      "ta:romanized": 1.0,
+      "te:native": 0.667,
+      "te:romanized": 0.0
+    }
+  },
+  "irrelevant": {
+    "minilm": {
+      "n": 4,
+      "max_top1_score": 0.073
+    },
+    "mpnet": {
+      "n": 4,
+      "max_top1_score": 0.149
+    }
+  }
+}

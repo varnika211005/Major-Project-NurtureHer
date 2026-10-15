@@ -8,6 +8,10 @@ class KnowledgeEntry:
     title: str
     content: str
     language: str = "en"
+    # Provenance: these entries are internal, unverified content pending
+    # clinical review. They carry no issuing organization, publication date,
+    # or external URL — do not invent any.
+    source: str = "NurtureHer internal knowledge entry (unverified — pending clinical review)"
 
 
 KNOWLEDGE_BASE: list[KnowledgeEntry] = [
@@ -27,7 +31,7 @@ KNOWLEDGE_BASE: list[KnowledgeEntry] = [
         title="Pregnancy support",
         content=(
             "Pregnancy support should focus on antenatal visits, prescribed supplements, hydration, balanced meals, "
-            "safe rest, warning-sign awareness, and preparing questions for a doctor or ASHA worker."
+            "safe rest, warning-sign awareness, and preparing questions for a doctor or qualified healthcare professional."
         ),
     ),
     KnowledgeEntry(

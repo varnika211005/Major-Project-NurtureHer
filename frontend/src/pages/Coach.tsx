@@ -4,7 +4,6 @@ import {
   Heart,
   Mic,
   MicOff,
-  Paperclip,
   Send,
   Sparkles,
   ThumbsUp,
@@ -151,8 +150,9 @@ export function Coach() {
       <div className="mb-6 flex items-start gap-2.5 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-3.5 text-xs text-lavender-900 shadow-xs dark:border-lavender-800/40 dark:bg-lavender-950/40 dark:text-lavender-200">
         <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
         <div>
-          <span className="font-bold">Multilingual AI Coach:</span> Responses are grounded in verified WHO maternal
-          health guidelines and ICMR nutritional references. For acute medical emergencies, call 112 immediately.
+          <span className="font-bold">Multilingual AI Coach:</span> Educational information from NurtureHer&apos;s
+          internal knowledge base. It may make mistakes, so please take care. For acute medical emergencies, call 112
+          immediately.
         </div>
       </div>
 
@@ -176,7 +176,7 @@ export function Coach() {
 
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="border-lavender-300 text-primary">
-                  WHO & ICMR Grounded
+                  Educational Use Only
                 </Badge>
               </div>
             </div>
@@ -200,12 +200,12 @@ export function Coach() {
                       {item.response}
                     </ReactMarkdown>
 
-                    {/* Grounding Source Attribution Tag */}
+                    {/* Source attribution note */}
                     <div className="mt-3 flex items-center gap-2 border-t border-lavender-100/70 pt-2 text-[10px] text-muted dark:border-white/10 dark:text-white/50">
                       <span className="rounded bg-lavender-100 px-1.5 py-0.5 font-bold text-primary dark:bg-white/10">
-                        Evidence Grounded
+                        Cited Sources In-Text
                       </span>
-                      <span>WHO Maternal Guideline · NurtureHer Clinical RAG</span>
+                      <span>NurtureHer internal knowledge · screening is not a diagnosis</span>
                     </div>
                   </div>
 

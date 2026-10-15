@@ -54,10 +54,46 @@ class GeminiService:
 
         return self._fallback_response(prompt, language)
 
+    async def translate_to_english(self, text: str, source_language: str) -> str | None:
+        """Best-effort query translation for retrieval. Returns None on any
+        failure so the caller falls back to the original query. Never logs
+        the query text — only the languages involved and success/failure."""
+        if not self.api_key or self.api_key == "change-me":
+            logger.warning("Gemini query translation skipped (no API key): %s->en", source_language)
+            return None
+        instruction = (
+            f"Translate the following user health question from {source_language} to English. "
+            "Preserve all medical terms, numbers, symptoms, and the original meaning exactly. "
+            "Do not add, omit, or interpret clinical details. Reply with only the translation.\n\n"
+            f"Question: {text}"
+        )
+        payload = {
+            "contents": [{"parts": [{"text": instruction}]}],
+            "generationConfig": {"temperature": 0.0, "maxOutputTokens": 256},
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent",
+                    params={"key": self.api_key},
+                    json=payload,
+                )
+                response.raise_for_status()
+                data = response.json()
+                candidates = data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    parts = candidates[0]["content"].get("parts", [])
+                    if parts and "text" in parts[0]:
+                        translated = parts[0]["text"].strip()
+                        if translated:
+                            return translated
+        except Exception as exc:
+            logger.warning("Gemini query translation failed (%s->en): %s", source_language, exc)
+        return None
+
     def _fallback_response(self, prompt: str, language: str) -> str:
         retrieved_section = ""
         user_section = ""
-        user_msg = ""
 
         retrieved_match = re.search(r"Retrieved medical education context:\n(.*?)(?=\n\n|\Z)", prompt, re.DOTALL)
         if retrieved_match:
@@ -66,10 +102,6 @@ class GeminiService:
         user_match = re.search(r"User health context:\n(.*?)(?=\n\n|\Z)", prompt, re.DOTALL)
         if user_match:
             user_section = user_match.group(1).strip()
-
-        msg_match = re.search(r"User message:\n(.*?)(?=\n\n|\Z)", prompt, re.DOTALL)
-        if msg_match:
-            user_msg = msg_match.group(1).strip()
 
         response_parts = []
         if language != "en":
@@ -81,7 +113,14 @@ class GeminiService:
             clean_docs = [line.lstrip("- ").strip() for line in retrieved_section.split("\n") if line.strip()]
             response_parts.append("### Key Clinical Recommendations")
             for doc in clean_docs:
-                response_parts.append(f"- {doc}")
+                marker = ""
+                id_match = re.match(r"\[([A-Za-z0-9_]+)\]", doc)
+                if id_match:
+                    # Only IDs parsed from actually-retrieved context are cited;
+                    # nothing is invented here.
+                    marker = f" [source:{id_match.group(1)}]"
+                    doc = doc[id_match.end() :].strip()
+                response_parts.append(f"- {doc}{marker}")
 
         if user_section:
             response_parts.append("\n### Personalized Care Record Context")
@@ -89,7 +128,9 @@ class GeminiService:
                 if line.strip():
                     response_parts.append(f"- **{line.strip()}**")
 
-        response_parts.append("\n*Note: This information is for educational guidance. Please consult an ASHA worker or doctor for medical diagnosis or emergency care.*")
+        response_parts.append(
+            "\n*Note: This information is for educational guidance. Please consult a doctor or qualified healthcare professional for medical diagnosis or emergency care.*"
+        )
         response_parts.append("\nDo you have any specific symptoms or questions you'd like to discuss next?")
 
         return "\n".join(response_parts)

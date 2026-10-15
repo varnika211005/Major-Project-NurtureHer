@@ -14,5 +14,6 @@ class KnowledgeBaseDocumentLoader:
                 "category": entry.category,
                 "title": entry.title,
                 "language": entry.language,
+                "source": entry.source,
             },
         )

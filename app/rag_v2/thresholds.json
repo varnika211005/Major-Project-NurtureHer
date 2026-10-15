@@ -1,0 +1,10 @@
+{
+  "minilm": {
+    "default": 0.254,
+    "per_category": {}
+  },
+  "mpnet": {
+    "default": 0.35,
+    "per_category": {}
+  }
+}

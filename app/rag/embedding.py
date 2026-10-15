@@ -26,6 +26,13 @@ class SentenceTransformerEmbeddingService:
     def embed_query(self, text: str) -> np.ndarray:
         return self.embed_documents([text])[0]
 
+    @property
+    def is_degraded(self) -> bool:
+        """True when the semantic model failed to load and hash embeddings
+        are in use. Degraded vectors must never be presented as reliable
+        semantic medical retrieval."""
+        return self._model is None
+
     def _load_model(self):
         try:
             from sentence_transformers import SentenceTransformer
