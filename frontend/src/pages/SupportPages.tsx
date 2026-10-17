@@ -8,7 +8,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { api, ChatMessage, Profile, WellnessInsight } from "@/lib/api";
+import { api, ChatMessage, Profile } from "@/lib/api";
 import { IconNote } from "@/components/common/InfoBlocks";
 import { EmptyState, LoadingSkeleton } from "@/components/common/States";
 import { Page } from "@/components/common/Page";
@@ -20,72 +20,7 @@ import { LanguageSelector } from "@/components/common/LanguageSelector";
 import { useAuth } from "@/context/useAuth";
 import { useLanguage } from "@/context/useLanguage";
 
-export function InsightsPage() {
-  const { t } = useLanguage();
-  const [items, setItems] = useState<WellnessInsight[] | null>(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    api.insights()
-      .then((response) => setItems(response.insights))
-      .catch((reason) => {
-        setError(reason instanceof Error ? reason.message : "Unable to load health insights");
-        setItems([]);
-      });
-  }, []);
-
-  const severityStyle = (severity: string) => {
-    switch (severity.toLowerCase()) {
-      case "high":
-      case "critical":
-        return "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200";
-      case "medium":
-      case "moderate":
-        return "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200";
-      default:
-        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200";
-    }
-  };
-
-  return (
-    <Page title={t.insights.title} subtitle={t.insights.subtitle}>
-      <Card className="p-6">
-        <SectionHeader title={t.insights.sectionTitle} subtitle={t.insights.sectionSubtitle} />
-        {items === null ? (
-          <LoadingSkeleton />
-        ) : error ? (
-          <IconNote icon={Activity} title={t.insights.errorTitle} text={error} />
-        ) : items.length ? (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {items.map((item, index) => (
-              <article
-                key={`${item.category}-${item.message}-${index}`}
-                className="rounded-2xl border border-lavender-100 bg-gradient-to-br from-white to-lavender-50/60 p-5 shadow-soft dark:border-white/10 dark:from-white/10 dark:to-white/5"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                      <Lightbulb className="h-5 w-5" />
-                    </span>
-                    <h2 className="truncate font-black capitalize text-ink dark:text-white">
-                      {item.category.replace(/_/g, " ")}
-                    </h2>
-                  </div>
-                  <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-black capitalize ${severityStyle(item.severity)}`}>
-                    {item.severity}
-                  </span>
-                </div>
-                <p className="mt-4 text-xs leading-relaxed text-muted dark:text-white/65">{item.message}</p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title={t.insights.emptyTitle} text={t.insights.emptyText} />
-        )}
-      </Card>
-    </Page>
-  );
-}
+export { HealthInsightsPage as InsightsPage } from "./HealthInsights";
 
 export function JournalPage() {
   const { t } = useLanguage();

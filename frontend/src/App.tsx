@@ -20,7 +20,7 @@ const PCOSPage = lazy(() => import("@/pages/ClinicalPages").then((m) => ({ defau
 const PPDPage = lazy(() => import("@/pages/ClinicalPages").then((m) => ({ default: m.PPDPage })));
 const CyclePage = lazy(() => import("@/pages/ClinicalPages").then((m) => ({ default: m.CyclePage })));
 const EmergencyPage = lazy(() => import("@/pages/ClinicalPages").then((m) => ({ default: m.EmergencyPage })));
-const InsightsPage = lazy(() => import("@/pages/SupportPages").then((m) => ({ default: m.InsightsPage })));
+const InsightsPage = lazy(() => import("@/pages/HealthInsights").then((m) => ({ default: m.HealthInsightsPage })));
 const ChatHistoryPage = lazy(() => import("@/pages/SupportPages").then((m) => ({ default: m.ChatHistoryPage })));
 const JournalPage = lazy(() => import("@/pages/SupportPages").then((m) => ({ default: m.JournalPage })));
 const ProfilePage = lazy(() => import("@/pages/SupportPages").then((m) => ({ default: m.ProfilePage })));
