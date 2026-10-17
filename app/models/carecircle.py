@@ -43,6 +43,7 @@ class CareCircleAccess(Base):
     share_risk_category: Mapped[bool] = mapped_column(Boolean, default=True)
     share_wellness_summary: Mapped[bool] = mapped_column(Boolean, default=True)
     share_doctor_notes: Mapped[bool] = mapped_column(Boolean, default=False)
+    share_nutrition: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

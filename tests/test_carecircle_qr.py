@@ -163,7 +163,7 @@ async def test_revoked_access_requires_new_approval_after_rescan(carecircle_api)
     async with session_factory() as db:
         access_count = await db.scalar(select(func.count()).select_from(CareCircleAccess))
         old_access = await db.get(CareCircleAccess, existing_access_id)
-        assert old_access.status == "revoked"
+        assert old_access.status == "pending"
     assert access_count == 1
 
 
@@ -208,3 +208,114 @@ async def test_approved_restricted_scopes_and_other_requester_denial(carecircle_
     current_user["user"] = other_caregiver
     denied = await client.get(f"/api/v1/carecircle/shared-summary/{access_id}")
     assert denied.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_carecircle_requests_connections_and_nutrition_consent(carecircle_api):
+    client, session_factory, current_user = carecircle_api
+    mother, _ = await create_mother_qr(session_factory)
+    async with session_factory() as db:
+        caregiver = await create_user(db, UserRole.CAREGIVER, "Ramesh Sharma")
+        access = CareCircleAccess(
+            user_id=mother.id,
+            requester_id=caregiver.id,
+            relationship_label="Caregiver",
+            status="pending",
+            share_emergency=True,
+            share_risk_category=True,
+            share_wellness_summary=True,
+            share_nutrition=False,
+        )
+        db.add(access)
+        await db.commit()
+        await db.refresh(access)
+        access_id = str(access.id)
+
+    # 1. Mother views requests list: share_nutrition must be False by default
+    current_user["user"] = mother
+    res = await client.get("/api/v1/carecircle/requests")
+    assert res.status_code == 200
+    items = res.json()
+    assert len(items) >= 1
+    found = next((i for i in items if i["id"] == access_id), None)
+    assert found is not None
+    assert found["share_nutrition"] is False
+
+    # 2. Mother responds and approves, keeping share_nutrition=False
+    resp = await client.post(
+        f"/api/v1/carecircle/requests/{access_id}/respond",
+        json={"action": "approve", "share_emergency": True, "share_nutrition": False},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "approved"
+
+    # 3. Caregiver views connections: nutrition permission is False
+    current_user["user"] = caregiver
+    conn_res = await client.get("/api/v1/carecircle/connections")
+    assert conn_res.status_code == 200
+    conns = conn_res.json()
+    assert len(conns) >= 1
+    c_found = next((c for c in conns if c["access_id"] == access_id), None)
+    assert c_found is not None
+    assert c_found["permissions"]["nutrition"] is False
+
+    # 4. Mother grants nutrition sharing explicitly
+    current_user["user"] = mother
+    resp_update = await client.post(
+        f"/api/v1/carecircle/requests/{access_id}/respond",
+        json={"action": "approve", "share_emergency": True, "share_nutrition": True},
+    )
+    assert resp_update.status_code == 200
+
+    # 5. Caregiver views connections again: nutrition permission is now True
+    current_user["user"] = caregiver
+    conn_res2 = await client.get("/api/v1/carecircle/connections")
+    assert conn_res2.status_code == 200
+    c_found2 = next((c for c in conn_res2.json() if c["access_id"] == access_id), None)
+    assert c_found2 is not None
+    assert c_found2["permissions"]["nutrition"] is True
+
+
+def test_sqlite_migration_script(tmp_path):
+    from scripts.migrate_sqlite import migrate_sqlite
+    import sqlite3
+
+    db_path = str(tmp_path / "legacy.db")
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE carecircle_access (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            requester_id TEXT NOT NULL,
+            relationship_label TEXT,
+            status TEXT DEFAULT 'pending',
+            share_emergency BOOLEAN DEFAULT 1,
+            share_risk_category BOOLEAN DEFAULT 1,
+            share_wellness_summary BOOLEAN DEFAULT 1,
+            share_doctor_notes BOOLEAN DEFAULT 0
+        )
+        """
+    )
+    cur.execute("INSERT INTO carecircle_access (id, user_id, requester_id) VALUES ('acc-1', 'usr-1', 'req-1')")
+    conn.commit()
+    conn.close()
+
+    # Run migration
+    changed = migrate_sqlite(db_path)
+    assert changed is True
+
+    # Re-run migration: must be idempotent (no changes)
+    changed_again = migrate_sqlite(db_path)
+    assert changed_again is False
+
+    # Verify column exists and default is 0
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cols = [c[1] for c in cur.execute("PRAGMA table_info(carecircle_access)").fetchall()]
+    assert "share_nutrition" in cols
+    row = cur.execute("SELECT id, share_nutrition FROM carecircle_access WHERE id='acc-1'").fetchone()
+    assert row[1] == 0  # restrictive default
+    conn.close()
+

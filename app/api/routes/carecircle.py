@@ -31,6 +31,7 @@ class AccessResponsePayload(BaseModel):
     share_risk_category: bool = True
     share_wellness_summary: bool = True
     share_doctor_notes: bool = False
+    share_nutrition: bool = False
 
 
 @router.post("/qr/generate")
@@ -159,6 +160,7 @@ async def request_access(
         access.share_risk_category = False
         access.share_wellness_summary = False
         access.share_doctor_notes = False
+        access.share_nutrition = False
     else:
         access = CareCircleAccess(
             user_id=mother.id,
@@ -169,6 +171,7 @@ async def request_access(
             share_risk_category=False,
             share_wellness_summary=False,
             share_doctor_notes=False,
+            share_nutrition=False,
         )
         db.add(access)
     await db.commit()
@@ -212,6 +215,7 @@ async def list_mother_requests(
             "share_emergency": access.share_emergency,
             "share_risk_category": access.share_risk_category,
             "share_wellness_summary": access.share_wellness_summary,
+            "share_nutrition": access.share_nutrition,
             "requested_at": access.requested_at.isoformat(),
             "responded_at": access.responded_at.isoformat() if access.responded_at else None,
             "revoked_at": access.revoked_at.isoformat() if access.revoked_at else None,
@@ -240,6 +244,7 @@ async def respond_to_request(
     access.share_risk_category = payload.share_risk_category
     access.share_wellness_summary = payload.share_wellness_summary
     access.share_doctor_notes = payload.share_doctor_notes
+    access.share_nutrition = payload.share_nutrition
     access.responded_at = datetime.now(timezone.utc)
 
     await db.commit()
@@ -314,6 +319,7 @@ async def list_caregiver_connections(
                 "emergency": access.share_emergency,
                 "risk_category": access.share_risk_category,
                 "wellness_summary": access.share_wellness_summary,
+                "nutrition": access.share_nutrition,
             },
         })
     return connections

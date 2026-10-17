@@ -180,6 +180,9 @@ Then run `.\venv\Scripts\Activate.ps1` again.
 ### Q: How do I test the backend API directly?
 **Answer**: Visit **`http://127.0.0.1:8000/docs`** in your browser for the interactive Swagger UI testing every endpoint.
 
+### Q: Which port does the backend use?
+**Answer**: The standard backend port is **8000** (`http://localhost:8000/api/v1`). The frontend connects to port 8000 by default. If you ever need to run the backend on a different port (such as 8001), you can override it in the frontend environment by setting `VITE_API_BASE_URL=http://localhost:<PORT>/api/v1` in `frontend/.env`.
+
 ---
 
 🎉 **Good luck with your project presentation on Wednesday! You have a complete, clinic-ready AI healthcare platform.**

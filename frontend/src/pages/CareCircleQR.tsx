@@ -31,6 +31,7 @@ export function CareCircleQRPage() {
     share_emergency: true,
     share_risk_category: true,
     share_wellness_summary: true,
+    share_nutrition: false,
   });
 
   useEffect(() => {
@@ -345,6 +346,19 @@ export function CareCircleQRPage() {
                         type="checkbox"
                         checked={shareConfig.share_wellness_summary}
                         onChange={(e) => setShareConfig({ ...shareConfig, share_wellness_summary: e.target.checked })}
+                        className="h-5 w-5 accent-primary"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                      <div>
+                        <p className="text-sm font-black text-ink dark:text-white">Nutrition Preferences & Plans</p>
+                        <p className="text-xs text-muted">Dietary preferences, restrictions, allergies, and active nutrition plans</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={shareConfig.share_nutrition}
+                        onChange={(e) => setShareConfig({ ...shareConfig, share_nutrition: e.target.checked })}
                         className="h-5 w-5 accent-primary"
                       />
                     </label>

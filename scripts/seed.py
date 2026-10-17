@@ -5,7 +5,7 @@ import uuid
 
 from sqlalchemy import select
 
-from app.core.database import AsyncSessionLocal, Base, engine
+from app.core.database import AsyncSessionLocal, Base, engine, ensure_sqlite_schema
 import app.models  # ensure all models registered
 from app.core.security import UserRole, hash_password
 from app.models.carecircle import CareCircleQR
@@ -63,6 +63,7 @@ async def ensure_nutrition_plan(db, category: str, phase: str, meal_type: str, t
 async def main() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(ensure_sqlite_schema)
 
     async with AsyncSessionLocal() as db:
         print("Seeding NurtureHer AI demo environment...")
