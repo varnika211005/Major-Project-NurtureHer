@@ -12,7 +12,6 @@ const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then((m) => (
 const ReportsZone = lazy(() => import("@/pages/ReportsZone").then((m) => ({ default: m.ReportsZone })));
 const NutritionPage = lazy(() => import("@/pages/NutritionPage").then((m) => ({ default: m.NutritionPage })));
 const CareCircleQR = lazy(() => import("@/pages/CareCircleQR").then((m) => ({ default: m.CareCircleQRPage })));
-const DoctorVisitAssistant = lazy(() => import("@/pages/DoctorVisitAssistant").then((m) => ({ default: m.DoctorVisitAssistant })));
 const CaregiverPage = lazy(() => import("@/pages/CaregiverPage").then((m) => ({ default: m.CaregiverPage })));
 const HerReachPage = lazy(() => import("@/pages/HerReach").then((m) => ({ default: m.HerReachPage })));
 
@@ -77,9 +76,8 @@ export default function App() {
             <Route path="/ppd" element={<PPDPage />} />
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/nutrition" element={<NutritionPage />} />
-            <Route path="/doctor-visit" element={<DoctorVisitAssistant />} />
             <Route path="/carecircle" element={user.role === "mother" ? <CareCircleQR /> : <Navigate to="/" replace />} />
-            <Route path="/caregiver" element={<CaregiverPage />} />
+            <Route path="/caregiver" element={user.role === "caregiver" ? <CaregiverPage /> : <Navigate to="/" replace />} />
             <Route path="/herreach" element={<HerReachPage />} />
             <Route path="/emergency" element={<EmergencyPage />} />
             <Route path="/reports" element={<ReportsZone />} />

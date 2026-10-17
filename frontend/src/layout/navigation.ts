@@ -146,9 +146,7 @@ export function getNavigationSections(t: TranslationSchema, role = "mother"): Na
         { key: "journal", label: t.nav.journal, path: "/journal", icon: Moon },
         { key: "nutrition", label: t.nav.nutrition, path: "/nutrition", icon: Utensils },
         { key: "herreach", label: "HerReach Healthcare", path: "/herreach", icon: Compass },
-        { key: "doctorVisit", label: "Doctor-Visit Prep", path: "/doctor-visit", icon: Stethoscope },
         { key: "carecircle", label: "CareCircle QR Vault", path: "/carecircle", icon: QrCode },
-        { key: "caregiver", label: t.nav.caregiver, path: "/caregiver", icon: Baby },
         { key: "emergency", label: t.nav.emergency, path: "/emergency", icon: LifeBuoy },
       ],
     },
@@ -179,9 +177,7 @@ export const navigation = [
   { label: "PPD Detection", path: "/ppd", icon: ShieldAlert },
   { label: "Mood Journal", path: "/journal", icon: Moon },
   { label: "Nutrition Guide", path: "/nutrition", icon: Utensils },
-  { label: "AI Doctor-Visit Prep", path: "/doctor-visit", icon: Stethoscope },
   { label: "CareCircle QR Vault", path: "/carecircle", icon: QrCode },
-  { label: "Caregiver Zone", path: "/caregiver", icon: Baby },
   { label: "Emergency Help", path: "/emergency", icon: LifeBuoy },
   { label: "Reports Zone", path: "/reports", icon: BarChart3 },
   { label: "Doctor Portal", path: "/doctor", icon: Stethoscope },
@@ -198,15 +194,15 @@ export const navigationSections = [
   },
   {
     title: "Care Tools",
-    items: navigation.slice(4, 13),
+    items: navigation.slice(4, 11),
   },
   {
     title: "Team & Records",
-    items: navigation.slice(13, 17),
+    items: navigation.slice(11, 15),
   },
   {
     title: "Account",
-    items: navigation.slice(17),
+    items: navigation.slice(15),
   },
 ];
 

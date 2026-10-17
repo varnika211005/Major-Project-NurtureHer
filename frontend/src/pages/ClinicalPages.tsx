@@ -516,7 +516,7 @@ export function PPDPage() {
                 </p>
                 <p className="mt-1">
                   {result.epds_score >= 10
-                    ? "Care recommendation: We advise sharing this screening summary with your doctor or visiting our Caregiver Zone for continuous emotional support."
+                    ? "Care recommendation: We advise sharing this screening summary with your doctor or reaching out to your care circle for continuous emotional support."
                     : "Your answers suggest positive emotional adaptation. Reach out to your care circle whenever needed."}
                 </p>
               </div>

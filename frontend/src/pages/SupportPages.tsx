@@ -8,7 +8,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { api, CaregiverContent, ChatMessage, Profile, WellnessInsight } from "@/lib/api";
+import { api, ChatMessage, Profile, WellnessInsight } from "@/lib/api";
 import { IconNote } from "@/components/common/InfoBlocks";
 import { EmptyState, LoadingSkeleton } from "@/components/common/States";
 import { Page } from "@/components/common/Page";
@@ -261,33 +261,6 @@ export function NutritionPage() {
       <Card className="p-6">
         <IconNote icon={FileText} title="Nutrition Guide Available in Main Navigation" text="Please visit the dedicated /nutrition route to access full meal plans and hydration tracker." />
       </Card>
-    </Page>
-  );
-}
-
-export function CaregiverPage() {
-  const { t } = useLanguage();
-  const [items, setItems] = useState<CaregiverContent[]>([]);
-  useEffect(() => {
-    Promise.all([api.caregiver("videos"), api.caregiver("tips"), api.caregiver("articles")])
-      .then((groups) => setItems(groups.flat()))
-      .catch(() => undefined);
-  }, []);
-  return (
-    <Page title={t.caregiver.title} subtitle={t.caregiver.subtitle}>
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {items.length ? (
-          items.map((item) => (
-            <Card key={item.id} className="p-5">
-              <Badge>{item.category}</Badge>
-              <h2 className="mt-3 text-base font-black text-ink dark:text-white">{item.title}</h2>
-              <p className="mt-2 text-xs leading-relaxed text-muted dark:text-white/60">{item.description}</p>
-            </Card>
-          ))
-        ) : (
-          <EmptyState title={t.caregiver.emptyTitle} text={t.caregiver.emptyText} />
-        )}
-      </div>
     </Page>
   );
 }
