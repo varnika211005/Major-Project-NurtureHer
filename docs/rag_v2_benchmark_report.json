@@ -1,19 +1,19 @@
 {
   "models": {
     "minilm": {
-      "load_ms": 3158.3,
-      "latency_median_ms": 20.8,
-      "latency_p95_ms": 32.4,
-      "peak_kb": 64290,
+      "load_ms": 2687.8,
+      "latency_median_ms": 25.5,
+      "latency_p95_ms": 33.0,
+      "peak_kb": 64294,
       "recall_at_1": 0.182,
       "recall_at_4": 0.182,
       "mrr": 0.398
     },
     "mpnet": {
-      "load_ms": 1170.7,
-      "latency_median_ms": 91.7,
-      "latency_p95_ms": 102.9,
-      "peak_kb": 161,
+      "load_ms": 1031.9,
+      "latency_median_ms": 101.3,
+      "latency_p95_ms": 112.2,
+      "peak_kb": 168,
       "recall_at_1": 0.636,
       "recall_at_4": 0.636,
       "mrr": 0.804

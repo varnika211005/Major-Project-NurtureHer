@@ -6,7 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.repositories.health import ChatRepository
 from app.rag.prompt_templates import build_health_coach_prompt, ensure_disclaimer
+from app.rag_v2.citations import validate as validate_citations
 from app.schemas.health import ChatRequest
+from app.services.corpus_evidence import CorpusUnavailableError, EvidenceVerdict, get_corpus_index
+from app.services.escalation import escalate_from_chat
 from app.services.gemini_service import GeminiService
 from app.services.memory_service import ConversationMemoryService
 from app.services.rag_service import RAGService
@@ -14,6 +17,7 @@ from app.services.safety import REVIEW_STATUS as SAFETY_REVIEW_STATUS
 from app.services.safety import TEMPLATE_VERSION as SAFETY_TEMPLATE_VERSION
 from app.services.safety import detect_urgent_symptoms, urgent_response
 from app.services.translation_service import TranslationService
+from app.services.triage import TRIAGE_RULES_VERSION, TriageLevel, triage_message
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +45,10 @@ class ChatbotService:
                 self.translator.detect_language(payload.message) or payload.language,
                 user.preferred_language,
             )
-            return await self._persist(user, payload, urgent_response(urgent_kind), urgent_language)
+            chat = await self._persist(user, payload, urgent_response(urgent_kind), urgent_language)
+            # Escalation never delays or alters the urgent reply above.
+            await self._escalate_best_effort(user, TriageLevel.URGENT, urgent_kind, payload.message)
+            return chat
 
         # 2. Language: detected script/keywords win, else the request field,
         # else the user's profile preference.
@@ -70,18 +77,18 @@ class ChatbotService:
                     elapsed_ms,
                 )
 
-        # 4. Retrieve with diagnostics. Degraded backends and empty or
-        # below-threshold results count as no evidence — never as reliable
-        # semantic medical retrieval.
-        retrieved_context, user_context, cited_ids = await self.rag.build_context(user, retrieval_query, language)
-        diagnostics = self.rag.context_builder.last_diagnostics
-        if diagnostics is None or diagnostics.degraded or not cited_ids:
-            logger.info(
-                "Chat insufficient evidence degraded=%s n_docs=%d top_score=%.3f",
-                diagnostics.degraded if diagnostics else True,
-                diagnostics.doc_count if diagnostics else 0,
-                diagnostics.top_score if diagnostics else 0.0,
-            )
+        # 4. Retrieve with diagnostics. Corpus-first (authoritative passages
+        # with evidence gating); the existing v1 KB path is the fallback, and
+        # degraded backends and empty results count as no evidence.
+        triage = triage_message(payload.message)
+        logger.info(
+            "Chat triage level=%s rules=%s reason=%s",
+            triage.level.value,
+            TRIAGE_RULES_VERSION,
+            triage.reason,
+        )
+        retrieved_context, user_context, cited_ids = await self._retrieve(user, retrieval_query, language)
+        if not cited_ids:
             return await self._persist_insufficient_evidence(user, payload, language)
 
         # 5. Generate with cited IDs only, then enforce the disclaimer.
@@ -90,7 +97,56 @@ class ChatbotService:
         started = time.monotonic()
         response = await self.gemini.generate_response(prompt, language)
         logger.info("Chat generation completed in %dms", round((time.monotonic() - started) * 1000))
-        return await self._persist(user, payload, response, language)
+        validated = validate_citations(response, cited_ids)
+        if validated.report.stripped_unknown or validated.report.stripped_malformed_count:
+            logger.info(
+                "Chat citations stripped unknown=%d malformed=%d",
+                len(validated.report.stripped_unknown),
+                validated.report.stripped_malformed_count,
+            )
+            response = validated.text
+        chat = await self._persist(user, payload, response, language)
+        if triage.level == TriageLevel.NEEDS_ATTENTION:
+            # Case-only escalation per policy (no notifications); never alters the reply.
+            await self._escalate_best_effort(
+                user, TriageLevel.NEEDS_ATTENTION, triage.matched or "distress-signal", payload.message
+            )
+        return chat
+
+    async def _retrieve(
+        self, user: User, query: str, language: str
+    ) -> tuple[str, str, tuple[str, ...]]:
+        """Corpus-first retrieval; falls back to the v1 KB path on any non-sufficient outcome."""
+        try:
+            corpus = get_corpus_index()
+        except CorpusUnavailableError as exc:
+            logger.info("Chat corpus unavailable (%s); using v1 KB path", exc)
+            return await self.rag.build_context(user, query, language)
+        try:
+            evidence = corpus.retrieve(query)
+        except Exception as exc:
+            logger.info("Chat corpus retrieval errored (%s); using v1 KB path", type(exc).__name__)
+            return await self.rag.build_context(user, query, language)
+        if evidence.verdict != EvidenceVerdict.SUFFICIENT:
+            logger.info(
+                "Chat corpus %s (%s); using v1 KB path",
+                evidence.verdict.value,
+                evidence.reason,
+            )
+            return await self.rag.build_context(user, query, language)
+        logger.info(
+            "Chat corpus sufficient n_docs=%d top_score=%.3f",
+            len(evidence.cited_ids),
+            evidence.top_score,
+        )
+        user_context = await self.rag.context_builder._build_user_context(user, language)
+        return "\n".join(evidence.context_lines), user_context, evidence.cited_ids
+
+    async def _escalate_best_effort(self, user: User, level: TriageLevel, kind: str, message: str) -> None:
+        try:
+            await escalate_from_chat(self.db, user=user, level=level, kind=kind, trigger_message=message)
+        except Exception as exc:
+            logger.info("Chat escalation failed (%s); reply already persisted", type(exc).__name__)
 
     async def _persist(self, user: User, payload: ChatRequest, response: str, language: str):
         final_response = ensure_disclaimer(response)

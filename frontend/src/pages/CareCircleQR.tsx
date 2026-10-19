@@ -1,5 +1,6 @@
 import { Check, Copy, Download, KeyRound, Lock, QrCode, RefreshCw, ShieldCheck, Trash2, UserCheck, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { api, CareCircleRequestItem } from "@/lib/api";
 import { useAuth } from "@/context/useAuth";
 import { Page } from "@/components/common/Page";
@@ -14,6 +15,8 @@ export function CareCircleQRPage() {
   const { user } = useAuth();
   const [token, setToken] = useState("");
   const [qrPayload, setQrPayload] = useState("");
+  const [qrImageDataUrl, setQrImageDataUrl] = useState("");
+  const [qrError, setQrError] = useState("");
   const [requests, setRequests] = useState<CareCircleRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -28,10 +31,38 @@ export function CareCircleQRPage() {
     share_emergency: true,
     share_risk_category: true,
     share_wellness_summary: true,
+    share_nutrition: false,
+    share_chat_history: false,
   });
+
+  useEffect(() => {
+    if (!qrPayload) {
+      setQrImageDataUrl("");
+      return;
+    }
+
+    let active = true;
+    void QRCode.toDataURL(qrPayload, { width: 220, margin: 1, errorCorrectionLevel: "M" })
+      .then((dataUrl) => {
+        if (active) {
+          setQrImageDataUrl(dataUrl);
+          setQrError("");
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setQrImageDataUrl("");
+          setQrError("The QR code could not be generated locally. Please try again.");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [qrPayload]);
 
   async function loadQRAndRequests() {
     setLoading(true);
+    setQrError("");
     try {
       const [qrRes, reqRes] = await Promise.all([
         api.getCareCircleQR(),
@@ -41,16 +72,9 @@ export function CareCircleQRPage() {
       setQrPayload(window.location.origin + qrRes.qr_payload);
       setRequests(reqRes);
     } catch {
-      // If error, generate one
-      try {
-        const genRes = await api.generateCareCircleQR();
-        setToken(genRes.token);
-        setQrPayload(window.location.origin + genRes.qr_payload);
-      } catch {
-        // Fallback
-        setToken("demo-token-nurtureher-carecircle-secure");
-        setQrPayload(window.location.origin + "/verify-access?token=demo-token-nurtureher-carecircle-secure");
-      }
+      setToken("");
+      setQrPayload("");
+      setQrError("Could not load your secure QR code. Please sign in and try again.");
     } finally {
       setLoading(false);
     }
@@ -66,12 +90,10 @@ export function CareCircleQRPage() {
       const res = await api.generateCareCircleQR();
       setToken(res.token);
       setQrPayload(window.location.origin + res.qr_payload);
+      setQrError("");
       await loadQRAndRequests();
     } catch {
-      // Fallback local token rotation
-      const newToken = "tok-" + Math.random().toString(36).substring(2, 12);
-      setToken(newToken);
-      setQrPayload(window.location.origin + "/verify-access?token=" + newToken);
+      setQrError("The QR code could not be refreshed. Your current code has not been replaced.");
     } finally {
       setGenerating(false);
     }
@@ -118,6 +140,7 @@ export function CareCircleQRPage() {
   }
 
   function printQRCard() {
+    if (!qrImageDataUrl) return;
     const printWin = window.open("", "_blank", "width=600,height=700");
     if (!printWin) return;
     printWin.document.write(`
@@ -138,9 +161,8 @@ export function CareCircleQRPage() {
             <h1>CareCircle TrustVault QR</h1>
             <p>Scan to request consent-governed health access for <strong>${user?.name}</strong></p>
             <div class="qr-box">
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrPayload)}" alt="CareCircle QR" />
+              <img src="${qrImageDataUrl}" alt="CareCircle QR" />
             </div>
-            <p style="font-size: 11px; word-break: break-all;"><strong>Link:</strong> ${qrPayload}</p>
             <div class="notice">
               <strong>🔒 Privacy Assured:</strong> No health or personal data is encoded in this QR code. Scanning submits a tokenized request requiring explicit mother consent.
             </div>
@@ -203,7 +225,7 @@ export function CareCircleQRPage() {
             <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)]">
               {/* QR Display Card */}
               <Card className="text-center p-7">
-                <Badge className="mb-2">ACTIVE ENCRYPTED TOKEN</Badge>
+                <Badge className="mb-2">ACTIVE ACCESS TOKEN</Badge>
                 <h2 className="text-lg font-black text-ink dark:text-white">Your Personal CareCircle QR</h2>
                 <p className="mt-1 text-xs text-muted">
                   Share with your spouse, trusted caregiver, or ASHA worker
@@ -211,19 +233,20 @@ export function CareCircleQRPage() {
 
                 {/* QR Code Container */}
                 <div className="mx-auto my-6 flex h-60 w-60 items-center justify-center rounded-3xl border-2 border-dashed border-lavender-300 bg-white p-4 shadow-soft dark:border-white/20 dark:bg-white">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrPayload)}`}
-                    alt="CareCircle QR Code"
-                    className="h-full w-full rounded-2xl"
-                  />
+                  {qrImageDataUrl ? (
+                    <img src={qrImageDataUrl} alt="CareCircle QR Code" className="h-full w-full rounded-2xl" />
+                  ) : (
+                    <p className="px-4 text-xs text-muted">{qrError || "Preparing secure QR code locally…"}</p>
+                  )}
                 </div>
+                {qrError && <p role="alert" className="mb-3 text-xs font-semibold text-rose-600">{qrError}</p>}
 
                 <div className="flex items-center justify-center gap-2">
                   <Button variant="secondary" className="text-xs" onClick={copyLink}>
                     {copied ? <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-600" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
                     {copied ? "Link Copied" : "Copy Secure Link"}
                   </Button>
-                  <Button variant="secondary" className="text-xs" onClick={printQRCard}>
+                  <Button variant="secondary" className="text-xs" disabled={!qrImageDataUrl} onClick={printQRCard}>
                     <Download className="mr-1.5 h-3.5 w-3.5" /> Print / Save
                   </Button>
                   <Button className="text-xs" disabled={generating} onClick={handleRotateQR} title="Rotate token">
@@ -246,7 +269,7 @@ export function CareCircleQRPage() {
                         <span>Zero Medical Data in QR</span>
                       </div>
                       <p className="mt-2 text-xs leading-5 text-muted dark:text-white/60">
-                        The QR code contains exclusively a cryptographically signed access-request token. No symptoms, names, or diagnosis reside inside the image.
+                        The QR code contains only an opaque, expiring access-request token. No symptoms, names, or diagnoses are encoded.
                       </p>
                     </div>
 
@@ -324,6 +347,32 @@ export function CareCircleQRPage() {
                         type="checkbox"
                         checked={shareConfig.share_wellness_summary}
                         onChange={(e) => setShareConfig({ ...shareConfig, share_wellness_summary: e.target.checked })}
+                        className="h-5 w-5 accent-primary"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                      <div>
+                        <p className="text-sm font-black text-ink dark:text-white">Nutrition Preferences & Plans</p>
+                        <p className="text-xs text-muted">Dietary preferences, restrictions, allergies, and active nutrition plans</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={shareConfig.share_nutrition}
+                        onChange={(e) => setShareConfig({ ...shareConfig, share_nutrition: e.target.checked })}
+                        className="h-5 w-5 accent-primary"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+                      <div>
+                        <p className="text-sm font-black text-ink dark:text-white">Conversation History</p>
+                        <p className="text-xs text-muted">Chat messages with the AI coach, shared only when you explicitly allow it</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={shareConfig.share_chat_history}
+                        onChange={(e) => setShareConfig({ ...shareConfig, share_chat_history: e.target.checked })}
                         className="h-5 w-5 accent-primary"
                       />
                     </label>

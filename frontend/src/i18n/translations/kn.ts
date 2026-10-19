@@ -42,7 +42,6 @@ export const kn: TranslationSchema = {
     ppd: "ಪಿಪಿಡಿ ಪತ್ತೆ (ಖಿನ್ನತೆ)",
     journal: "ಭಾವನೆ ದಿನಚರಿ",
     nutrition: "ಪೌಷ್ಟಿಕಾಂಶ ಮಾರ್ಗದರ್ಶಿ",
-    caregiver: "ಪಾಲಕರ ವಲಯ",
     emergency: "ತುರ್ತು ಸಹಾಯ",
     reports: "ವರದಿಗಳು ಮತ್ತು ವಿಶ್ಲೇಷಣೆ",
     profile: "ಪ್ರೊಫೈಲ್",
@@ -236,12 +235,6 @@ export const kn: TranslationSchema = {
     emptyTitle: "ಇನ್ನೂ ಯಾವುದೇ ಒಳನೋಟಗಳಿಲ್ಲ",
     emptyText: "ವೈಯಕ್ತಿಕ ಒಳನೋಟಗಳನ್ನು ರಚಿಸಲು ಭಾವನೆ, ಲಕ್ಷಣ, ಚಕ್ರ ಅಥವಾ ಮೌಲ್ಯಮಾಪನ ದಾಖಲೆಗಳನ್ನು ಸೇರಿಸಿ.",
     errorTitle: "ಒಳನೋಟಗಳು ಲಭ್ಯವಿಲ್ಲ",
-  },
-  caregiver: {
-    title: "ಪಾಲಕರ ವಲಯ",
-    subtitle: "ಪಾಲಕರ ಎಪಿಐ ನಿಂದ ಪಡೆದ ಶೈಕ್ಷಣಿಕ ವಿಷಯ.",
-    emptyTitle: "ಯಾವುದೇ ವಿಷಯ ಲಭ್ಯವಿಲ್ಲ",
-    emptyText: "ಈ ಖಾತೆಗೆ ಯಾವುದೇ ವಿಷಯ ಲಭ್ಯವಿಲ್ಲ.",
   },
   nutrition: {
     title: "ಪೌಷ್ಟಿಕಾಂಶ ಮಾರ್ಗದರ್ಶಿ",

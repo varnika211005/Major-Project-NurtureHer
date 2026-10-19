@@ -12,7 +12,17 @@ from app.rag_v2.benchmark import (
     SyntheticBackend,
     run_benchmark,
 )
-from app.rag_v2.ingest import chunk_text, clean_text, record_language, validate_corpus, validate_document
+from app.rag_v2.ingest import (
+    chunk_text,
+    clean_text,
+    clean_with_map,
+    extract_headings,
+    is_bibliography_chunk,
+    record_language,
+    section_at,
+    validate_corpus,
+    validate_document,
+)
 from app.rag_v2.schemas import CorpusManifest, MedicalDocument, SourceProvenance
 
 
@@ -156,3 +166,88 @@ def test_benchmark_backend_protocol_shape():
     backend: BenchmarkBackend = SyntheticBackend()
     assert backend.name == "synthetic"
     assert backend.score("anything", "d1") == 0.0
+
+
+def test_clean_with_map_matches_clean_text():
+    for text in ("", "   ", "a  b\n\nc\td", "  leading and trailing  ", "no-change"):
+        cleaned, mapping = clean_with_map(text)
+        assert cleaned == clean_text(text)
+        assert len(mapping) == len(cleaned)
+        for cleaned_idx, raw_idx in enumerate(mapping):
+            if cleaned[cleaned_idx] == " ":
+                assert not text[raw_idx].isspace()
+            else:
+                assert cleaned[cleaned_idx] == text[raw_idx]
+
+
+def test_extract_headings_finds_structure_not_prose():
+    page = (
+        "A.4.1 Screening for postpartum depression and anxiety\n"
+        "Screening helps identify mothers who need support.\n"
+        "RECOMMENDATION 18\n"
+        "Screen all women using a validated tool.\n"
+    )
+    headings = extract_headings(page)
+    assert [text for _, text in headings] == [
+        "A.4.1 Screening for postpartum depression and anxiety",
+        "RECOMMENDATION 18",
+    ]
+    assert headings[0][0] == 0
+    # Body sentences are never headings, even when capitalized.
+    assert not any("validated tool" in text for _, text in headings)
+
+
+def test_section_at_uses_nearest_preceding_heading():
+    headings = [(0, "A.4 Screening"), (120, "A.4.1 Details")]
+    assert section_at(headings, 0) == "A.4 Screening"
+    assert section_at(headings, 119) == "A.4 Screening"
+    assert section_at(headings, 200) == "A.4.1 Details"
+    assert section_at([], 50, carry="prev") == "prev"
+    assert section_at([], 50) == ""
+
+
+def test_reference_lines_are_not_headings():
+    page = (
+        "181. Willinger M, Hoffman HJ. Infant sleep position.\n"
+        "182. Cheng TL, Monteiro N. Child health outcomes.\n"
+        "9. Gavin NI, Gaynes BN, Lohr KN. Perinatal depression review.\n"
+        "A.4.1 Screening for postpartum depression and anxiety\n"
+        "Screen all women using a validated tool.\n"
+    )
+    headings = extract_headings(page)
+    assert [text for _, text in headings] == ["A.4.1 Screening for postpartum depression and anxiety"]
+
+
+def test_decimal_fragments_and_title_style_refs_are_not_headings():
+    page = (
+        "30. Self help plus (SH+). A group-based stress management course.\n"
+        "Geneva: World Health Organization; 2022.\n"
+        "The effect was 0.03 lower). It is uncertain whether this holds.\n"
+        "5.8 Infant loss\n"
+        "When women lose their infants, support is needed.\n"
+    )
+    headings = extract_headings(page)
+    assert [text for _, text in headings] == ["5.8 Infant loss"]
+
+
+def test_is_bibliography_chunk():
+    refs = (
+        "181. Willinger M, Hoffman HJ. Infant sleep position. Pediatrics.\n"
+        "182. Cheng TL, Monteiro N. Child health outcomes. Lancet.\n"
+        "Some trailing text without references."
+    )
+    assert is_bibliography_chunk(refs) is True
+    title_style_refs = (
+        "30. Self help plus (SH+). A group-based stress management course.\n"
+        "Geneva: World Health Organization; 2022.\n"
+        "40. Thinking healthy. A manual for psychological management.\n"
+        "Geneva: World Health Organization; 2021.\n"
+        "67. Increasing access to health workers in remote areas.\n"
+    )
+    assert is_bibliography_chunk(title_style_refs) is True
+    guidance = (
+        "Screen all women for depression using the EPDS questionnaire. "
+        "One trial (Smith J, 2020) supports routine screening."
+    )
+    assert is_bibliography_chunk(guidance) is False
+    assert is_bibliography_chunk("") is False

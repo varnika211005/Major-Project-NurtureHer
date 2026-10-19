@@ -1,24 +1,40 @@
-import { AlertTriangle, Baby, CheckCircle2, Heart, HelpCircle, LifeBuoy, Lock, PhoneCall, ShieldAlert, Sparkles, UserCheck, Video } from "lucide-react";
+import { AlertTriangle, Baby, CheckCircle2, Compass, ExternalLink, Heart, LocateFixed, Lock, MapPin, Navigation, Phone, PhoneCall, QrCode, RefreshCw, Search, ShieldAlert, UserCheck, Video, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { api, CaregiverContent } from "@/lib/api";
-import { useAuth } from "@/context/useAuth";
-import { useLanguage } from "@/context/useLanguage";
+import { useSearchParams } from "react-router-dom";
+import { CareCircleConnect } from "@/components/CareCircleConnect";
+import { api, CaregiverContent, ChatMessage, FacilityItem, OfficialHelpline } from "@/lib/api";
 import { Page } from "@/components/common/Page";
 import { SectionHeader } from "@/components/common/Premium";
-import { LoadingSkeleton } from "@/components/common/States";
+import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/common/States";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+
+type CaregiverConnection = {
+  access_id: string;
+  mother_id: string;
+  mother_name: string;
+  relationship_label: string;
+  permissions: Record<string, boolean>;
+};
 
 export function CaregiverPage() {
-  const { user } = useAuth();
-  const { t } = useLanguage();
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState<CaregiverContent[]>([]);
-  const [connections, setConnections] = useState<Array<{ access_id: string; mother_name: string; relationship_label: string; permissions: Record<string, boolean> }>>([]);
+  const [connections, setConnections] = useState<CaregiverConnection[]>([]);
   const [sharedSummary, setSharedSummary] = useState<Record<string, unknown> | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"education" | "warning-signs" | "support-checklist" | "shared-status">("education");
+  const [chatHistory, setChatHistory] = useState<ChatMessage[] | null>(null);
+  const [chatHistoryDenied, setChatHistoryDenied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"education" | "warning-signs" | "support-checklist" | "shared-status" | "connect" | "herreach">(
+    searchParams.get("tab") === "connect" ? "connect" : "education",
+  );
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (searchParams.get("tab") === "connect") setActiveTab("connect");
+  }, [searchParams]);
 
   // Daily support checklist state
   const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({
@@ -45,6 +61,7 @@ export function CaregiverPage() {
           setSelectedConnection(conns[0].access_id);
           const summary = await api.careCircleSharedSummary(conns[0].access_id).catch(() => null);
           setSharedSummary(summary);
+          await loadSharedChatHistory(conns[0].access_id);
         }
       } finally {
         setLoading(false);
@@ -52,6 +69,18 @@ export function CaregiverPage() {
     }
     void loadCaregiverData();
   }, []);
+
+  async function loadSharedChatHistory(accessId: string) {
+    setChatHistory(null);
+    setChatHistoryDenied(false);
+    try {
+      const history = await api.careCircleChatHistory(accessId);
+      setChatHistory(history);
+    } catch {
+      // Missing consent yields 403: show the consent notice instead of history.
+      setChatHistoryDenied(true);
+    }
+  }
 
   async function handleSelectConnection(accessId: string) {
     setSelectedConnection(accessId);
@@ -61,7 +90,20 @@ export function CaregiverPage() {
     } catch {
       setSharedSummary(null);
     }
+    await loadSharedChatHistory(accessId);
   }
+
+  async function handleConnectionApproved(accessId: string) {
+    const refreshedConnections = await api.careCircleConnections();
+    setConnections(refreshedConnections);
+    const connection = refreshedConnections.find((item) => item.access_id === accessId);
+    if (!connection) return;
+    setSelectedConnection(accessId);
+    setSharedSummary(await api.careCircleSharedSummary(accessId));
+    await loadSharedChatHistory(accessId);
+  }
+
+  const activeConnection = connections.find((connection) => connection.access_id === selectedConnection);
 
   const toggleTask = (taskId: string) => {
     setCheckedTasks((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
@@ -155,6 +197,29 @@ export function CaregiverPage() {
           }`}
         >
           <UserCheck className="h-4 w-4 text-primary" /> Mother's Permitted Status ({connections.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("connect")}
+          className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-black transition ${
+            activeTab === "connect"
+              ? "bg-primary text-white shadow-glow"
+              : "bg-white text-ink hover:bg-lavender-50 dark:bg-white/10 dark:text-white"
+          }`}
+        >
+          <QrCode className="h-4 w-4 text-primary" /> Connect to Mother
+        </button>
+        <button
+          id="caregiver-herreach-tab"
+          type="button"
+          onClick={() => setActiveTab("herreach")}
+          className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-black transition ${
+            activeTab === "herreach"
+              ? "bg-primary text-white shadow-glow"
+              : "bg-white text-ink hover:bg-lavender-50 dark:bg-white/10 dark:text-white"
+          }`}
+        >
+          <Compass className="h-4 w-4 text-primary" /> HerReach Facility Finder
         </button>
       </div>
 
@@ -337,65 +402,505 @@ export function CaregiverPage() {
 
                   {/* Summary Card */}
                   {sharedSummary ? (
-                    <Card>
-                      <SectionHeader
-                        title={`Shared Health Status: ${String(sharedSummary.mother_name ?? "Mother")}`}
-                        subtitle="Filtered by the mother's explicit consent preferences"
-                      />
-
-                      <div className="grid gap-5 md:grid-cols-3">
-                        {Boolean(sharedSummary.emergency) && (
-                          <div className="rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                            <Badge className="mb-2">EMERGENCY SOS</Badge>
-                            <p className="text-xs font-bold text-muted">Emergency Contact:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {String((sharedSummary.emergency as Record<string, string>).emergency_contact)}
-                            </p>
-                            <p className="mt-2 text-xs font-bold text-muted">Blood Group:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {String((sharedSummary.emergency as Record<string, string>).blood_group)}
+                    <div className="space-y-5">
+                      <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-lavender-50 to-white dark:from-white/10 dark:to-white/5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-widest text-primary">CareCircle connection</p>
+                            <h2 className="mt-1 text-2xl font-black text-ink dark:text-white">
+                              {String(sharedSummary.mother_name ?? activeConnection?.mother_name ?? "Mother")}
+                            </h2>
+                            <p className="mt-1 text-sm text-muted dark:text-white/60">
+                              {activeConnection?.relationship_label ?? String(sharedSummary.relationship_label ?? "Caregiver")}
                             </p>
                           </div>
+                          <Badge className="w-fit bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                            Approved by mother
+                          </Badge>
+                        </div>
+                        <div className="mt-5 border-t border-lavender-200 pt-4 dark:border-white/10">
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted dark:text-white/60">Permitted sharing</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {[
+                              ["emergency", "Emergency details"],
+                              ["risk_category", "Screening categories"],
+                              ["wellness_summary", "Wellness summary"],
+                            ].map(([key, label]) => {
+                              const permitted = Boolean(activeConnection?.permissions[key]);
+                              return (
+                                <span
+                                  key={key}
+                                  className={`rounded-full px-3 py-1 text-xs font-bold ${permitted ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-lavender-100 text-muted dark:bg-white/10 dark:text-white/60"}`}
+                                >
+                                  {label}: {permitted ? "Shared" : "Not shared"}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </Card>
+
+                      <div className="grid gap-4 lg:grid-cols-3">
+                        {Boolean(sharedSummary.emergency) && (
+                          <Card className="h-full border-rose-200/80 dark:border-rose-900/30">
+                            <div className="flex items-center gap-2">
+                              <PhoneCall className="h-4 w-4 text-rose-600" />
+                              <h3 className="text-sm font-black text-ink dark:text-white">Emergency information</h3>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                              <div>
+                                <p className="text-xs font-bold text-muted">Emergency contact</p>
+                                <p className="mt-0.5 break-words text-sm font-bold text-ink dark:text-white">
+                                  {String((sharedSummary.emergency as Record<string, string>).emergency_contact ?? "Not configured")}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-muted">Blood group</p>
+                                <p className="mt-0.5 text-sm font-bold text-ink dark:text-white">
+                                  {String((sharedSummary.emergency as Record<string, string>).blood_group ?? "Not recorded")}
+                                </p>
+                              </div>
+                              <a href="tel:112" className="inline-flex items-center gap-1 text-xs font-black text-rose-700 hover:underline dark:text-rose-300">
+                                Emergency services: 112
+                              </a>
+                            </div>
+                          </Card>
                         )}
 
                         {Boolean(sharedSummary.screenings) && (
-                          <div className="rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                            <Badge className="mb-2">CLINICAL SCREENING</Badge>
-                            <p className="text-xs font-bold text-muted">PCOS Risk Level:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {String((sharedSummary.screenings as Record<string, string>).pcos_risk)}
-                            </p>
-                            <p className="mt-2 text-xs font-bold text-muted">PPD Risk Level:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {String((sharedSummary.screenings as Record<string, string>).ppd_risk)}
-                            </p>
-                          </div>
+                          <Card className="h-full">
+                            <div className="flex items-center gap-2">
+                              <ShieldAlert className="h-4 w-4 text-primary" />
+                              <h3 className="text-sm font-black text-ink dark:text-white">Clinical screening categories</h3>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                              {[
+                                ["PCOS", (sharedSummary.screenings as Record<string, string>).pcos_risk],
+                                ["Postpartum wellbeing", (sharedSummary.screenings as Record<string, string>).ppd_risk],
+                              ].map(([label, value]) => (
+                                <div key={label} className="flex items-center justify-between gap-3 rounded-xl bg-lavender-50 px-3 py-2 dark:bg-white/5">
+                                  <span className="text-xs font-bold text-muted">{label}</span>
+                                  <span className="text-sm font-black capitalize text-ink dark:text-white">{String(value ?? "Not shared")}</span>
+                                </div>
+                              ))}
+                              <p className="text-[11px] leading-4 text-muted dark:text-white/50">
+                                Risk categories are screening information, not a diagnosis.
+                              </p>
+                            </div>
+                          </Card>
                         )}
 
                         {Boolean(sharedSummary.wellness) && (
-                          <div className="rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 dark:border-white/10 dark:bg-white/5">
-                            <Badge className="mb-2">WELLNESS & ENERGY</Badge>
-                            <p className="text-xs font-bold text-muted">Today's Mood:</p>
-                            <p className="text-sm font-black capitalize text-ink dark:text-white">
-                              {String((sharedSummary.wellness as Record<string, string>).today_mood)}
-                            </p>
-                            <p className="mt-2 text-xs font-bold text-muted">Recent Fatigue:</p>
-                            <p className="text-sm font-black text-ink dark:text-white">
-                              {(sharedSummary.wellness as Record<string, boolean>).recent_fatigue ? "Fatigue reported" : "Normal energy"}
-                            </p>
-                          </div>
+                          <Card className="h-full">
+                            <div className="flex items-center gap-2">
+                              <Heart className="h-4 w-4 text-rose-500" />
+                              <h3 className="text-sm font-black text-ink dark:text-white">Wellness and energy</h3>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                              <div>
+                                <p className="text-xs font-bold text-muted">Most recent mood</p>
+                                <p className="mt-0.5 text-sm font-black capitalize text-ink dark:text-white">
+                                  {String((sharedSummary.wellness as Record<string, string>).today_mood ?? "Not logged")}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-muted">Recent indicators</p>
+                                <div className="mt-1 flex flex-wrap gap-1.5">
+                                  {[
+                                    ["recent_fatigue", "Fatigue"],
+                                    ["recent_sleep_issue", "Sleep difficulty"],
+                                    ["recent_anxiety", "Anxiety"],
+                                  ].map(([key, label]) => (
+                                    <Badge key={key} className={(sharedSummary.wellness as Record<string, boolean>)[key] ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" : ""}>
+                                      {label}: {(sharedSummary.wellness as Record<string, boolean>)[key] ? "Reported" : "Not reported"}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
                         )}
                       </div>
-                    </Card>
+
+                      {Boolean(sharedSummary.wellness) && (
+                        <Card className="border-emerald-200/80 bg-emerald-50/50 dark:border-emerald-900/30 dark:bg-emerald-950/10">
+                          <div className="flex items-start gap-3">
+                            <Heart className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                            <div>
+                              <h3 className="text-sm font-black text-ink dark:text-white">Everyday support</h3>
+                              <p className="mt-1 text-xs leading-5 text-muted dark:text-white/60">
+                                Check in gently, offer practical help with meals or baby care, and make space for rest. For urgent concerns or worsening symptoms, contact a qualified healthcare professional.
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      )}
+                    </div>
                   ) : (
                     <LoadingSkeleton />
                   )}
+
+                  {/* Shared Conversation History (consent-gated) */}
+                  <Card>
+                    <SectionHeader
+                      title="Shared Conversation History"
+                      subtitle="Visible only when the mother explicitly consents to chat sharing"
+                    />
+                    {chatHistoryDenied ? (
+                      <p className="text-xs text-muted">
+                        Conversation history is not shared for this connection. The mother can enable it from her CareCircle QR page.
+                      </p>
+                    ) : chatHistory === null ? (
+                      <LoadingSkeleton />
+                    ) : chatHistory.length === 0 ? (
+                      <p className="text-xs text-muted">No shared conversations yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {chatHistory.slice(0, 10).map((chat) => (
+                          <div key={chat.id} className="rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs dark:border-white/10 dark:bg-white/5">
+                            <p className="font-bold text-ink dark:text-white">Mother: {chat.message}</p>
+                            <p className="mt-1 text-muted">{chat.response}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
                 </div>
               )}
             </div>
           )}
+
+          {activeTab === "connect" && <CareCircleConnect onApproved={handleConnectionApproved} />}
+
+          {/* TAB 5: HERREACH SIMPLE HEALTHCARE FACILITY SEARCH */}
+          {activeTab === "herreach" && <CaregiverHerReachView />}
         </>
       )}
     </Page>
+  );
+}
+
+const CAREGIVER_FACILITY_CATEGORIES = [
+  { key: "hospital", label: "Hospitals" },
+  { key: "pharmacy", label: "Pharmacies / Medical Stores" },
+  { key: "clinic", label: "Clinics" },
+  { key: "maternity", label: "Maternity Centres" },
+  { key: "gynaecology", label: "Gynaecology Services" },
+  { key: "mental_health", label: "Mental Health Services" },
+  { key: "diagnostic_lab", label: "Diagnostic Laboratories" },
+  { key: "emergency", label: "Emergency Facilities" },
+];
+
+function CaregiverHerReachView() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("hospital");
+  const [manualArea, setManualArea] = useState("");
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationLabel, setLocationLabel] = useState("");
+  const [locationError, setLocationError] = useState("");
+
+  const [facilities, setFacilities] = useState<FacilityItem[]>([]);
+  const [helplines, setHelplines] = useState<OfficialHelpline[]>([]);
+  const [isLiveProvider, setIsLiveProvider] = useState(false);
+  const [providerStatus, setProviderStatus] = useState("");
+  const [externalSearchUrl, setExternalSearchUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSearch = async (overrideCat?: string) => {
+    setLoading(true);
+    setErrorMsg("");
+    const cat = overrideCat || selectedCategory;
+
+    try {
+      const res = await api.herreachFacilities({
+        query: searchQuery.trim() || undefined,
+        category: cat,
+        lat: userCoords?.lat,
+        lng: userCoords?.lng,
+        area: manualArea.trim() || undefined,
+      });
+
+      setFacilities(res.facilities || []);
+      setHelplines(res.official_helplines || []);
+      setIsLiveProvider(res.is_live_provider);
+      setProviderStatus(res.provider_status);
+      setExternalSearchUrl(res.external_search_url);
+      setHasSearched(true);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Search failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleGetLocation = () => {
+    setLocationError("");
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser. Please enter area manually.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationLabel(`Current Location (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`);
+        setManualArea("");
+      },
+      (err) => {
+        setLocationError(err.code === err.PERMISSION_DENIED ? "Location access denied. Please enter an area or PIN code." : "Could not determine location.");
+      },
+      { timeout: 8000 }
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-lavender-100 bg-white/90 p-5 shadow-soft dark:border-white/10 dark:bg-card">
+        <SectionHeader
+          title="HerReach Facility Finder"
+          subtitle="Locate nearby hospitals, medical stores, diagnostic centres, and emergency facilities"
+        />
+
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <Input
+                id="caregiver-search-facility-input"
+                type="text"
+                placeholder="Search facility name or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleSearch();
+                }}
+                className="pl-10"
+              />
+            </div>
+
+            <div className="relative">
+              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <Input
+                id="caregiver-search-area-input"
+                type="text"
+                placeholder="Area, city, or PIN code (e.g. 560038)"
+                value={manualArea}
+                onChange={(e) => {
+                  setManualArea(e.target.value);
+                  setUserCoords(null);
+                  setLocationLabel("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleSearch();
+                }}
+                className="pl-10"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                id="caregiver-locate-btn"
+                type="button"
+                variant="secondary"
+                className="gap-1.5"
+                onClick={handleGetLocation}
+              >
+                <LocateFixed className="h-4 w-4 text-primary" />
+                <span className="hidden sm:inline">Near Me</span>
+              </Button>
+              <Button
+                id="caregiver-search-submit-btn"
+                type="button"
+                className="gap-1.5 shadow-soft"
+                onClick={() => void handleSearch()}
+                disabled={loading}
+              >
+                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                <span>Search</span>
+              </Button>
+            </div>
+          </div>
+
+          {locationLabel && (
+            <div className="flex items-center gap-2 text-xs font-bold text-primary">
+              <MapPin className="h-3.5 w-3.5" />
+              <span>Using: {locationLabel}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setUserCoords(null);
+                  setLocationLabel("");
+                }}
+                className="ml-1 text-muted hover:text-ink"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          {locationError && <p className="text-xs text-rose-600">{locationError}</p>}
+
+          {/* Searchable categories */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {CAREGIVER_FACILITY_CATEGORIES.map((cat) => {
+              const active = selectedCategory === cat.key;
+              return (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory(cat.key);
+                    void handleSearch(cat.key);
+                  }}
+                  className={`rounded-2xl px-3.5 py-1.5 text-xs font-bold transition ${
+                    active
+                      ? "bg-primary text-white shadow-soft"
+                      : "border border-lavender-200 bg-white text-ink hover:bg-lavender-50 dark:border-white/10 dark:bg-card dark:text-white"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
+
+      {/* Fallback notice if provider is unconfigured */}
+      {!isLiveProvider && hasSearched && (
+        <Card className="border-amber-200 bg-amber-50/60 p-5 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="space-y-2">
+              <p className="text-xs font-black text-amber-900 dark:text-amber-200">
+                Live Maps Provider Status
+              </p>
+              <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                {providerStatus || "Live Google Places API is unconfigured. Direct Google Maps navigation links and verified public emergency helplines are available below."}
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2 border border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-card dark:text-amber-100"
+                onClick={() => {
+                  if (externalSearchUrl) window.open(externalSearchUrl, "_blank", "noopener,noreferrer");
+                }}
+              >
+                <Navigation className="h-3.5 w-3.5 text-primary" />
+                <span>Search "{selectedCategory}" on Google Maps</span>
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Facility Results */}
+      {loading ? (
+        <LoadingSkeleton />
+      ) : errorMsg ? (
+        <ErrorState title="Healthcare search error" text={errorMsg} />
+      ) : facilities.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {facilities.map((facility) => (
+            <Card
+              key={facility.id}
+              className="flex flex-col justify-between border-lavender-100 p-5 transition hover:shadow-card dark:border-white/10 dark:bg-card"
+            >
+              <div className="space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <Badge variant={facility.is_emergency ? "secondary" : "default"} className="text-[10px]">
+                    {facility.facility_type}
+                  </Badge>
+                  {facility.distance_km !== null && facility.distance_km !== undefined && (
+                    <span className="rounded-xl bg-lavender-100 px-2 py-0.5 text-[10px] font-black text-primary dark:bg-white/10 dark:text-white">
+                      {facility.distance_km} km away
+                    </span>
+                  )}
+                </div>
+
+                <h3 className="text-sm font-black text-ink dark:text-white">{facility.name}</h3>
+
+                <p className="flex items-start gap-1.5 text-xs text-muted dark:text-white/60">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-secondary" />
+                  <span>{facility.address}</span>
+                </p>
+
+                {facility.opening_hours && (
+                  <p className="text-[11px] font-bold text-mint">● {facility.opening_hours}</p>
+                )}
+              </div>
+
+              <div className="mt-4 flex items-center gap-2 border-t border-lavender-100 pt-3 dark:border-white/10">
+                {facility.contact_number && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 gap-1 text-xs"
+                    onClick={() => window.open(`tel:${facility.contact_number}`)}
+                  >
+                    <Phone className="h-3 w-3 text-mint" />
+                    <span>Call</span>
+                  </Button>
+                )}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="flex-1 gap-1 text-xs"
+                  onClick={() => window.open(facility.directions_url, "_blank", "noopener,noreferrer")}
+                >
+                  <Navigation className="h-3 w-3" />
+                  <span>Directions</span>
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : isLiveProvider ? (
+        <EmptyState
+          title="No facilities found"
+          text="Try selecting a different healthcare category or entering a broader area."
+        />
+      ) : null}
+
+      {/* Verified 24/7 Helplines */}
+      {helplines.length > 0 && (
+        <div className="space-y-3">
+          <SectionHeader
+            title="Verified 24/7 National Emergency & Health Helplines"
+            subtitle="Immediate phone support accessible at all times"
+          />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {helplines.map((helpline, idx) => (
+              <Card
+                key={idx}
+                className="border-lavender-100 bg-white/80 p-4 transition hover:shadow-soft dark:border-white/10 dark:bg-card"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-black text-ink dark:text-white">{helpline.title}</p>
+                  <span className="font-mono text-sm font-black text-primary">{helpline.number}</span>
+                </div>
+                <p className="mt-1 text-[11px] text-muted dark:text-white/60">{helpline.description}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-3 w-full gap-2 text-xs"
+                  onClick={() => window.open(`tel:${helpline.number}`)}
+                >
+                  <Phone className="h-3 w-3 text-primary" />
+                  <span>Call {helpline.number}</span>
+                </Button>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

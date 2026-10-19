@@ -11,6 +11,7 @@ import pytest
 from app.rag_v2.benchmark import BenchmarkCase, BenchmarkReport
 from app.rag_v2.cases import CASES
 from app.rag_v2.embeddings import EmbeddingBackend, ModelUnavailableError
+from app.rag_v2.retrieve import MissingThresholdError, Retriever, ThresholdTable
 from app.rag_v2.store import CosineStore
 
 KNOWN_DOC_IDS = {
@@ -133,3 +134,74 @@ def test_mrr_and_recall_by_language():
     assert report.recall_by_language("missing", 1) == {}
     empty = BenchmarkReport(cases=(), results=())
     assert empty.mrr("m") == 0.0
+
+
+class _StubBackend:
+    name = "stub"
+
+    def __init__(self, query_vector: np.ndarray) -> None:
+        self._query_vector = query_vector
+
+    def embed(self, texts: list[str]) -> np.ndarray:
+        return np.tile(self._query_vector, (len(texts), 1)).astype("float32")
+
+
+def test_threshold_table_rejects_malformed_entries():
+    bad_tables = [
+        {},
+        {"stub": {"per_category": {}}},
+        {"stub": {"default": "0.5", "per_category": {}}},
+        {"stub": {"default": float("nan"), "per_category": {}}},
+        {"stub": {"default": float("inf"), "per_category": {}}},
+        {"stub": {"default": 1.5, "per_category": {}}},
+        {"stub": {"default": -1.5, "per_category": {}}},
+        {"stub": {"default": True, "per_category": {}}},
+        {"stub": {"default": 0.5, "per_category": {"x": "0.7"}}},
+        {"stub": {"default": 0.5, "per_category": ["x"]}},
+        {"stub": [0.5]},
+    ]
+    for bad in bad_tables:
+        with pytest.raises(MissingThresholdError):
+            ThresholdTable(bad)
+    with pytest.raises(MissingThresholdError):
+        ThresholdTable.from_dict({})
+    with pytest.raises(MissingThresholdError):
+        ThresholdTable("not-a-dict")
+
+
+def test_threshold_table_accepts_int_and_boundary_values():
+    table = ThresholdTable({"b": {"default": 0, "per_category": {"c": 1}}})
+    assert table.get("b") == 0.0
+    assert table.get("b", "c") == 1.0
+    assert table.get("b", "missing-cat") == 0.0
+
+
+def test_threshold_table_non_string_category_fails_closed():
+    table = ThresholdTable({"b": {"default": 0.5, "per_category": {}}})
+    with pytest.raises(MissingThresholdError):
+        table.get("b", ["x"])
+
+
+def test_retriever_category_passthrough():
+    table = ThresholdTable({"stub": {"default": 0.99, "per_category": {"keep": 0.5}}})
+    retriever = Retriever(
+        backend=_StubBackend(np.array([1.0, 0.2, 0.0], dtype="float32")),
+        store=_store(),
+        thresholds=table,
+    )
+    assert retriever.retrieve("q", top_k=3).documents == ()
+    result = retriever.retrieve("q", top_k=3, category="keep")
+    assert [doc_id for doc_id, _ in result.documents] == ["d1"]
+    assert result.diagnostics.threshold == 0.5
+
+
+def test_real_thresholds_values_pinned():
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "app" / "rag_v2" / "thresholds.json"
+    table = ThresholdTable.from_dict(json.loads(path.read_text(encoding="utf-8")))
+    # Calibrated values are frozen: this test guards the generated file,
+    # not gating behavior.
+    assert table.get("minilm") == 0.254
+    assert table.get("mpnet") == 0.35

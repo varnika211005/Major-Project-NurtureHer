@@ -52,7 +52,7 @@
 - **Start/test:** `uvicorn app.main:app`, `alembic upgrade head`, `pytest` (asyncio auto, coverage gate 80%, omits api/services/repos/workers), `ruff` (line-length 140, py311).
 
 ### Database and background processing
-- PostgreSQL 16 (asyncpg; SQLite `nurtureher.db` local fallback — binary, not parsed) via SQLAlchemy 2.0 `AsyncSessionLocal`; Alembic at `database/alembic` (`0001_initial` 14 tables+enums, `0002_production_indexes`, `0003_deactivate_legacy_asha_workers`); workflow per `docs/migration_strategy.md` (never edit applied migrations).
+- PostgreSQL 16 (asyncpg; SQLite `nurtureher.db` local fallback — binary, not parsed) via SQLAlchemy 2.0 `AsyncSessionLocal`; Alembic at `database/alembic` (`0001_initial` 14 tables+enums, `0002_production_indexes`, `0003_deactivate_asha_role` — deactivates legacy `ASHA_WORKER` rows, adds missing `DOCTOR` enum label, `0004_add_carecircle_tables` — CareCircle/doctor tables + chat-history scope, `0005_role_specific_nutrition` — consent-scoped nutrition profiles and care plans (renumbered from `0004_role_specific_nutrition` during the integration/gayathri-features merge)); workflow per `docs/migration_strategy.md` (never edit applied migrations; revision IDs must fit `alembic_version.version_num VARCHAR(32)`).
 - Redis: chat memory (`chat-memory:{user}`, 20 turns/1h TTL, fail-open), refresh rotation, dashboard cache, HTTP cache (`SafeRedis` wrappers); Celery worker + beat (300s heartbeat, 3600s expiry) for SMS alerts, health checks, alert expiry. No migration/concurrency issues verified; none claimed.
 
 ### Infrastructure

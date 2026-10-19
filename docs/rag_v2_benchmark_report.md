@@ -7,13 +7,13 @@ cases=44 (provisional non-English labels pending native-speaker review)
 
 ## minilm
 - recall@1=0.182 recall@4=0.182 mrr=0.398
-- latency median=20.8ms p95=32.4ms peak=64290KB load=3158.3ms
+- latency median=25.5ms p95=33.0ms peak=64294KB load=2687.8ms
 - per-language recall@1: en:native=1.000, hi:native=0.000, hi:romanized=0.000, kn:native=0.000, kn:romanized=1.000, ml:native=0.000, ta:native=0.000, ta:romanized=1.000, te:native=0.000, te:romanized=0.000
 - established-only cases: 6, provisional-only cases: 38
 
 ## mpnet
 - recall@1=0.636 recall@4=0.636 mrr=0.804
-- latency median=91.7ms p95=102.9ms peak=161KB load=1170.7ms
+- latency median=101.3ms p95=112.2ms peak=168KB load=1031.9ms
 - per-language recall@1: en:native=1.000, hi:native=0.833, hi:romanized=1.000, kn:native=0.667, kn:romanized=0.000, ml:native=0.500, ta:native=0.667, ta:romanized=1.000, te:native=0.667, te:romanized=0.000
 - established-only cases: 6, provisional-only cases: 38
 

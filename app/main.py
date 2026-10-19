@@ -26,7 +26,7 @@ if settings.sentry_dsn:
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 
-from app.core.database import Base, engine
+from app.core.database import Base, engine, ensure_sqlite_schema
 import app.models  # noqa: F401
 
 
@@ -35,6 +35,7 @@ async def lifespan(_: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(ensure_sqlite_schema)
     except Exception as exc:
         import logging
         logging.getLogger(__name__).warning("Database initialization in lifespan warning: %s", exc)

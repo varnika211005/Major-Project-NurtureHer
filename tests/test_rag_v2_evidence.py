@@ -67,15 +67,17 @@ def test_empty_evidence_below_cutoff():
 
 
 def test_missing_threshold_table_fails_closed():
-    retriever = Retriever(
-        backend=_StubBackend(np.ones(3, dtype="float32")),
-        store=_store(),
-        thresholds=ThresholdTable({}),
-    )
-    # Empty table is rejected at construction…
+    # Empty tables are rejected at construction…
+    with pytest.raises(MissingThresholdError):
+        ThresholdTable({})
     with pytest.raises(MissingThresholdError):
         ThresholdTable.from_dict({})
     # …and unknown backends refuse to run.
+    retriever = Retriever(
+        backend=_StubBackend(np.ones(3, dtype="float32")),
+        store=_store(),
+        thresholds=ThresholdTable({"other": {"default": 0.5, "per_category": {}}}),
+    )
     with pytest.raises(MissingThresholdError):
         retriever.retrieve("anything")
 
@@ -151,3 +153,90 @@ def test_p2_cases_provisional_contract():
             assert case.provisional is False
         elif case.relevant_doc_ids:
             assert case.provisional is True
+
+
+def test_gate_floor_rejects_weak_winner():
+    gate = EvidenceGate(min_score=0.5)
+    decision = gate.decide([("d1", 0.4)], _topics())
+    assert decision.verdict == EvidenceVerdict.INSUFFICIENT
+    assert "minimum" in decision.reason
+    assert decision.top_score == pytest.approx(0.4)
+
+
+def test_gate_floor_boundary_is_sufficient():
+    gate = EvidenceGate(min_score=0.5)
+    decision = gate.decide([("d1", 0.5), ("d2", 0.1)], _topics())
+    assert decision.verdict == EvidenceVerdict.SUFFICIENT
+    assert decision.top_score == pytest.approx(0.5)
+
+
+def test_gate_nonfinite_scores_are_insufficient():
+    for bad in (float("nan"), float("inf"), float("-inf")):
+        assert EvidenceGate(min_score=0.1).decide([("d1", bad)], _topics()).verdict == (
+            EvidenceVerdict.INSUFFICIENT
+        )
+        # Also without a floor: the gate itself must never call a NaN top hit sufficient.
+        assert EvidenceGate().decide([("d1", bad)], _topics()).verdict == (
+            EvidenceVerdict.INSUFFICIENT
+        )
+
+
+def test_gate_unknown_topics_only_is_insufficient():
+    gate = EvidenceGate()
+    decision = gate.decide([("d1", 0.9)], {})
+    assert decision.verdict == EvidenceVerdict.INSUFFICIENT
+    assert "known topics" in decision.reason
+    assert decision.top_score == pytest.approx(0.9)
+
+
+def test_gate_mixed_known_and_unknown_topics_preserves_behavior():
+    gate = EvidenceGate()
+    decision = gate.decide([("d1", 0.9), ("d2", 0.2)], {"d1": "alpha-topic"})
+    assert decision.verdict == EvidenceVerdict.SUFFICIENT
+    assert decision.candidate_topics == ("alpha-topic",)
+
+
+def test_gate_malformed_entries_are_insufficient():
+    gate = EvidenceGate()
+    for malformed in ([(123, 0.9)], [("d1", True)], [("d1", "0.9")], ["not-a-pair"], [("d1", None)]):
+        decision = gate.decide(malformed, _topics())
+        assert decision.verdict == EvidenceVerdict.INSUFFICIENT
+        assert "malformed" in decision.reason
+
+
+def test_gate_invalid_margins_and_floors_raise():
+    with pytest.raises(ValueError):
+        EvidenceGate(ambiguity_margin=-0.1)
+    with pytest.raises(ValueError):
+        EvidenceGate(ambiguity_margin=float("nan"))
+    with pytest.raises(ValueError):
+        EvidenceGate(ambiguity_margin=float("inf"))
+    with pytest.raises(ValueError):
+        EvidenceGate(min_score=float("nan"))
+    with pytest.raises(ValueError):
+        EvidenceGate(min_score="0.5")
+
+
+def test_gate_zero_margin_only_flags_exact_ties():
+    gate = EvidenceGate(ambiguity_margin=0.0)
+    tied = gate.decide([("d1", 0.8), ("d2", 0.8)], {"d1": "x", "d2": "y"})
+    assert tied.verdict == EvidenceVerdict.AMBIGUOUS
+    near = gate.decide([("d1", 0.8), ("d2", 0.79)], {"d1": "x", "d2": "y"})
+    assert near.verdict == EvidenceVerdict.SUFFICIENT
+
+
+def test_gate_unsorted_input_is_normalized():
+    gate = EvidenceGate()
+    shuffled = gate.decide([("d2", 0.2), ("d1", 0.9)], _topics())
+    ordered = gate.decide([("d1", 0.9), ("d2", 0.2)], _topics())
+    assert shuffled.verdict == ordered.verdict == EvidenceVerdict.SUFFICIENT
+    assert shuffled.top_score == ordered.top_score == pytest.approx(0.9)
+
+
+def test_gate_none_min_score_is_unconfigured_mode():
+    gate = EvidenceGate()
+    assert gate.min_score is None
+    # Without a floor the gate judges topic structure only; orchestration
+    # paths must supply the backend-calibrated threshold explicitly.
+    decision = gate.decide([("d1", 0.01)], {"d1": "t"})
+    assert decision.verdict == EvidenceVerdict.SUFFICIENT

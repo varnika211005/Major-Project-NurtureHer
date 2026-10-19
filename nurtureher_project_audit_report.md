@@ -1,3 +1,9 @@
+> **OBSOLETE — historical snapshot.** This report reflects the codebase as of
+> September 2, 2026 and is retained for history only. It does not describe the
+> current state (for example, the ASHA Worker application role has since been
+> removed and the RAG v2 module added). For the live summary see
+> `docs/PROJECT_MEMORY.md`.
+
 # NurtureHer — Comprehensive Technical Audit Report
 **Date:** September 2, 2026  
 **Purpose:** 7th-Semester Project Review Readiness Audit  

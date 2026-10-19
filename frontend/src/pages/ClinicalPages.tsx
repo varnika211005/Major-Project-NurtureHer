@@ -2,17 +2,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertTriangle,
   CalendarDays,
-  CheckCircle,
   Download,
-  FileText,
   HeartPulse,
   Info,
-  MapPin,
   PhoneCall,
   ShieldAlert,
-  ShieldCheck,
   Sparkles,
-  Stethoscope,
 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -22,7 +17,7 @@ import { generatePrintableReportWindow } from "@/lib/reportPdf";
 import { CalendarGrid } from "@/components/common/CalendarGrid";
 import { FormField, TextAreaField } from "@/components/common/FormField";
 import { IconNote, StatTile } from "@/components/common/InfoBlocks";
-import { DataTable, Gauge, MetricCard, SectionHeader } from "@/components/common/Premium";
+import { DataTable, Gauge, SectionHeader } from "@/components/common/Premium";
 import { Page } from "@/components/common/Page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -516,7 +511,7 @@ export function PPDPage() {
                 </p>
                 <p className="mt-1">
                   {result.epds_score >= 10
-                    ? "Care recommendation: We advise sharing this screening summary with your doctor or visiting our Caregiver Zone for continuous emotional support."
+                    ? "Care recommendation: We advise sharing this screening summary with your doctor or reaching out to your care circle for continuous emotional support."
                     : "Your answers suggest positive emotional adaptation. Reach out to your care circle whenever needed."}
                 </p>
               </div>

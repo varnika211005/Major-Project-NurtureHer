@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import AppError
-from app.core.security import UserRole, decode_token
+from app.core.security import UserRole, decode_token, is_legacy_role_lookup_error
 from app.models.user import User
 from app.repositories.users import UserRepository
 
@@ -28,7 +28,14 @@ async def get_current_user(
     except (ValueError, KeyError) as exc:
         raise AppError("Invalid authentication credentials", status.HTTP_401_UNAUTHORIZED) from exc
 
-    user = await UserRepository(db).get(user_id)
+    try:
+        user = await UserRepository(db).get(user_id)
+    except LookupError as exc:
+        if not is_legacy_role_lookup_error(exc):
+            raise
+        # Legacy-role row (e.g. removed ASHA Worker): indistinguishable from
+        # an inactive or missing user, so no account status is leaked.
+        raise AppError("Inactive or missing user", status.HTTP_401_UNAUTHORIZED) from exc
     if not user or not user.is_active:
         raise AppError("Inactive or missing user", status.HTTP_401_UNAUTHORIZED)
     return user

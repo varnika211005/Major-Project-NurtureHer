@@ -22,7 +22,6 @@ vi.mock("@/lib/reportPdf", () => ({
   generatePrintableReportWindow: vi.fn(),
 }));
 
-const mockedApi = vi.mocked(api);
 const predictPCOS = vi.mocked(api.predictPCOS);
 const pcosHistory = vi.mocked(api.pcosHistory);
 

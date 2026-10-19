@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8001/api/v1";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export type UserRole = "mother" | "caregiver" | "doctor" | "admin";
 
@@ -82,6 +82,107 @@ export type NutritionPlanItem = {
   is_affordable_local: boolean;
 };
 
+export type NutritionSuggestion = {
+  key: string;
+  name: string;
+  meal_type: string;
+  portion: string;
+  reason: string;
+  ingredients: string[];
+  preparation_instructions: string[];
+  preparation_minutes: number;
+  substitutions: string[];
+  contexts: string[];
+};
+
+export type NutritionMeal = {
+  name: string;
+  meal_type: string;
+  ingredients: string[];
+  serving_size: string | null;
+  preparation_instructions: string[];
+  preparation_minutes: number | null;
+  substitutions: string[];
+  nutrition_facts: string[];
+  nutrition_source: string | null;
+};
+
+export type NutritionDraftPayload = {
+  title: string;
+  applicable_context: string[];
+  meals: NutritionMeal[];
+  preparation_guidance?: string | null;
+  clinician_note?: string | null;
+};
+
+export type NutritionPreferences = {
+  dietary_preferences: string[];
+  dietary_restrictions: string[];
+  allergies: string[];
+  breastfeeding: boolean | null;
+};
+
+export type NutritionContext = {
+  pregnancy_stage: string | null;
+  postpartum: boolean;
+  breastfeeding: boolean | null;
+  pcos_screening_recorded: boolean;
+  ppd_screening_recorded: boolean;
+};
+
+export type NutritionCarePlan = {
+  id: string;
+  title: string;
+  applicable_context: string[];
+  meals: NutritionMeal[];
+  preparation_guidance: string | null;
+  clinician_note: string | null;
+  source: "general" | "ai_generated" | "doctor_authored" | "doctor_reviewed";
+  status: "draft" | "active" | "archived";
+  version: number;
+  created_at?: string | null;
+  reviewed_at: string | null;
+  archived_at?: string | null;
+};
+
+export type MotherNutritionData = {
+  context: NutritionContext;
+  context_guidance: string[];
+  preferences: NutritionPreferences;
+  suggestions: NutritionSuggestion[];
+  interactions: Record<string, { completed: boolean; saved: boolean }>;
+  active_plan: NutritionCarePlan | null;
+  disclaimer: string;
+};
+
+export type CaregiverNutritionData = {
+  mother_name: string;
+  context: NutritionContext;
+  context_guidance: string[];
+  preferences: NutritionPreferences;
+  general_suggestions: NutritionSuggestion[];
+  active_plan: NutritionCarePlan | null;
+  disclaimer: string;
+};
+
+export type DoctorNutritionData = {
+  patient: {
+    id: string;
+    name: string;
+    age: number | null;
+    pregnancy_stage: string | null;
+    postpartum: boolean;
+    breastfeeding: boolean | null;
+    pcos_screening: string | null;
+    ppd_screening: string | null;
+    dietary_preferences: string[];
+    dietary_restrictions: string[];
+    allergies: string[];
+  };
+  plans: NutritionCarePlan[];
+  disclaimer: string;
+};
+
 export type HealthMythItem = {
   id: string;
   category: string;
@@ -100,9 +201,18 @@ export type CareCircleRequestItem = {
   share_emergency: boolean;
   share_risk_category: boolean;
   share_wellness_summary: boolean;
+  share_nutrition: boolean;
   requested_at: string;
   responded_at: string | null;
   revoked_at: string | null;
+};
+
+export type CareCircleConnectionItem = {
+  access_id: string;
+  mother_id: string;
+  mother_name: string;
+  relationship_label: string;
+  permissions: Record<string, boolean> & { nutrition?: boolean };
 };
 
 export type DoctorPatientItem = {
@@ -121,22 +231,59 @@ export type DoctorPatientItem = {
   created_at: string | null;
 };
 
-export type DoctorVisitSummary = {
-  generated_at: string;
-  patient_name: string;
-  age: number | null;
-  pregnancy_stage: string;
-  emergency_contact: string;
-  summary: {
-    pcos_screening: { risk_level: string; probability: number | null; notes: string };
-    ppd_screening: { risk_level: string; epds_score: number | null; sentiment: string | null };
-    symptom_frequency_last_7_days: Record<string, number>;
-    recent_mood_trend: string[];
-    cycle_status: { last_period_date: string; cycle_length: number | null; next_predicted_date: string | null };
-  };
-  questions_to_ask_doctor: string[];
-  suggested_records_to_bring: string[];
-  disclaimer: string;
+export type FacilityItem = {
+  id: string;
+  name: string;
+  facility_type: string;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  distance_km: number | null;
+  contact_number: string | null;
+  opening_hours: string | null;
+  directions_url: string;
+  rating: number | null;
+  user_ratings_total: number | null;
+  is_emergency: boolean;
+};
+
+export type OfficialHelpline = {
+  title: string;
+  number: string;
+  description: string;
+  category: string;
+};
+
+export type FacilitySearchResponse = {
+  is_live_provider: boolean;
+  provider_status: string;
+  provider_name: string;
+  total_found: number;
+  query: string | null;
+  category: string | null;
+  location_searched: string | null;
+  external_search_url: string;
+  facilities: FacilityItem[];
+  official_helplines: OfficialHelpline[];
+};
+
+export type ConcernRecommendation = {
+  concern_key: string;
+  concern_title: string;
+  detected_assessment_basis: string | null;
+  suggested_facility_types: string[];
+  recommended_category: string;
+  clinical_safety_notice: string;
+};
+
+export type HerReachRecommendationsResponse = {
+  user_role: string;
+  has_pcos_data: boolean;
+  has_ppd_data: boolean;
+  has_pregnancy_data: boolean;
+  clinical_disclaimer: string;
+  recommendations: ConcernRecommendation[];
+  available_categories: string[];
 };
 
 let accessToken = sessionStorage.getItem("nurtureher_access_token");
@@ -188,7 +335,6 @@ export const api = {
   insights: () => request<{ insights: WellnessInsight[] }>("/wellness/insights"),
   profile: () => request<Profile>("/wellness/profile"),
   updateProfile: (payload: Partial<Profile>) => request<Profile>("/wellness/profile", { method: "PUT", body: JSON.stringify(payload) }),
-  doctorVisitSummary: () => request<DoctorVisitSummary>("/wellness/doctor-visit-summary", { method: "POST" }),
   reports: () => request<{ count: number; reports: ReportItem[]; disclaimer: string }>("/wellness/reports"),
 
   // Moods & Symptoms & Journal
@@ -215,6 +361,31 @@ export const api = {
   sendChat: (message: string, language: string) => request<ChatMessage>("/chat/message", { method: "POST", body: JSON.stringify({ message, language }) }),
 
   // Nutrition Guide & Hydration & Myths
+  myNutrition: () => request<MotherNutritionData>("/nutrition/me"),
+  updateNutritionPreferences: (preferences: {
+    dietary_preferences: string[];
+    dietary_restrictions: string[];
+    allergies: string[];
+    breastfeeding: boolean | null;
+  }) => request<typeof preferences>("/nutrition/preferences", { method: "PUT", body: JSON.stringify(preferences) }),
+  updateNutritionInteraction: (key: string, completed: boolean, saved: boolean) =>
+    request<{ recommendation_key: string; completed: boolean; saved: boolean }>(
+      `/nutrition/interactions/${encodeURIComponent(key)}?completed=${completed}&saved=${saved}`,
+      { method: "PUT" },
+    ),
+  caregiverNutrition: (accessId: string) =>
+    request<CaregiverNutritionData>(`/nutrition/caregiver/connections/${accessId}`),
+  doctorNutritionPatients: () => request<{ id: string; name: string }[]>("/nutrition/doctor/patients"),
+  doctorPatientNutrition: (patientId: string) =>
+    request<DoctorNutritionData>(`/nutrition/doctor/patients/${patientId}`),
+  createDoctorNutritionDraft: (patientId: string, payload: NutritionDraftPayload) =>
+    request<NutritionCarePlan>(`/nutrition/doctor/patients/${patientId}/plans`, { method: "POST", body: JSON.stringify(payload) }),
+  updateDoctorNutritionDraft: (patientId: string, planId: string, payload: NutritionDraftPayload) =>
+    request<NutritionCarePlan>(`/nutrition/doctor/patients/${patientId}/plans/${planId}`, { method: "PUT", body: JSON.stringify(payload) }),
+  publishDoctorNutritionPlan: (patientId: string, planId: string) =>
+    request<NutritionCarePlan>(`/nutrition/doctor/patients/${patientId}/plans/${planId}/publish`, { method: "POST" }),
+  discontinueDoctorNutritionPlan: (patientId: string, planId: string) =>
+    request<{ id: string; status: string }>(`/nutrition/doctor/patients/${patientId}/plans/${planId}/discontinue`, { method: "POST" }),
   nutritionPlans: (category?: string) => request<{ count: number; plans: NutritionPlanItem[]; disclaimer: string }>(category ? `/nutrition/plans?category=${encodeURIComponent(category)}` : "/nutrition/plans"),
   hydration: () => request<{ cups: number; target_cups: number; percent: number; date: string }>("/nutrition/hydration"),
   updateHydration: (cups: number, target_cups = 8) => request<{ cups: number; target_cups: number; percent: number }>("/nutrition/hydration", { method: "POST", body: JSON.stringify({ cups, target_cups }) }),
@@ -227,21 +398,40 @@ export const api = {
   getCareCircleQR: () => request<{ token: string; qr_payload: string; expires_at: string }>("/carecircle/qr"),
   generateCareCircleQR: () => request<{ token: string; qr_payload: string; expires_at: string; message: string }>("/carecircle/qr/generate", { method: "POST" }),
   requestCareCircleAccess: (token: string, relationship_label = "Caregiver") => request<{ id: string; status: string; message: string }>("/carecircle/request-access", { method: "POST", body: JSON.stringify({ token, relationship_label }) }),
+  careCircleRequestStatus: (requestId: string) => request<{ id: string; status: string }>(`/carecircle/requests/${requestId}/status`),
   careCircleRequests: () => request<CareCircleRequestItem[]>("/carecircle/requests"),
-  respondCareCircleRequest: (requestId: string, action: "approve" | "reject", scopes?: { share_emergency?: boolean; share_risk_category?: boolean; share_wellness_summary?: boolean }) => request<{ id: string; status: string; message: string }>(`/carecircle/requests/${requestId}/respond`, { method: "POST", body: JSON.stringify({ action, ...(scopes || {}) }) }),
+  respondCareCircleRequest: (requestId: string, action: "approve" | "reject", scopes?: { share_emergency?: boolean; share_risk_category?: boolean; share_wellness_summary?: boolean; share_nutrition?: boolean; share_chat_history?: boolean }) => request<{ id: string; status: string; message: string }>(`/carecircle/requests/${requestId}/respond`, { method: "POST", body: JSON.stringify({ action, ...(scopes || {}) }) }),
   revokeCareCircleAccess: (requestId: string) => request<{ id: string; status: string; message: string }>(`/carecircle/requests/${requestId}/revoke`, { method: "POST" }),
-  careCircleConnections: () => request<{ access_id: string; mother_id: string; mother_name: string; relationship_label: string; permissions: Record<string, boolean> }[]>("/carecircle/connections"),
+  careCircleConnections: () => request<CareCircleConnectionItem[]>("/carecircle/connections"),
   careCircleSharedSummary: (accessId: string) => request<Record<string, unknown>>(`/carecircle/shared-summary/${accessId}`),
+  careCircleChatHistory: (accessId: string) => request<ChatMessage[]>(`/carecircle/chat-history/${accessId}`),
 
   // Doctor Portal
   doctorPatients: () => request<DoctorPatientItem[]>("/doctor/patients"),
   doctorPatientTimeline: (patientId: string) => request<Record<string, unknown>>(`/doctor/patients/${patientId}/timeline`),
+  doctorPatientChatHistory: (patientId: string) => request<ChatMessage[]>(`/doctor/patients/${patientId}/chat-history`),
+  doctorEscalations: () => request<{ case_id: string; mother_id: string; mother_name: string; severity: string; risk_type: string; status: string; created_at: string }[]>("/doctor/escalations"),
   doctorAddNote: (patientId: string, payload: { clinical_observations: string; follow_up_recommendation?: string; prescribed_advice?: string }) => request<Record<string, unknown>>(`/doctor/patients/${patientId}/notes`, { method: "POST", body: JSON.stringify(payload) }),
 
   // Admin
   adminUsers: () => request<User[]>("/admin/users"),
   adminAuditLogs: () => request<Record<string, unknown>[]>("/admin/audit-logs"),
   adminDashboard: () => request<Record<string, unknown>>("/admin/dashboard"),
+
+  // HerReach Healthcare Discovery
+  herreachFacilities: (params: { query?: string; category?: string; lat?: number; lng?: number; area?: string; radius?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.query) searchParams.set("query", params.query);
+    if (params.category) searchParams.set("category", params.category);
+    if (params.lat !== undefined && params.lat !== null) searchParams.set("lat", String(params.lat));
+    if (params.lng !== undefined && params.lng !== null) searchParams.set("lng", String(params.lng));
+    if (params.area) searchParams.set("area", params.area);
+    if (params.radius) searchParams.set("radius", String(params.radius));
+    const qs = searchParams.toString();
+    return request<FacilitySearchResponse>(qs ? `/herreach/facilities?${qs}` : "/herreach/facilities");
+  },
+  herreachRecommendations: () => request<HerReachRecommendationsResponse>("/herreach/recommendations"),
+  herreachHelplines: () => request<OfficialHelpline[]>("/herreach/helplines"),
 
   // Notifications
   notifications: () => request<Alert[]>("/notifications"),

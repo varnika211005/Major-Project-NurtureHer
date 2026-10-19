@@ -1,4 +1,4 @@
-import { LifeBuoy, Moon, PhoneCall, Sun } from "lucide-react";
+import { Moon, PhoneCall, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "@/components/ui/avatar";

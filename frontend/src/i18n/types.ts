@@ -40,7 +40,6 @@ export interface TranslationSchema {
     ppd: string;
     journal: string;
     nutrition: string;
-    caregiver: string;
     emergency: string;
     reports: string;
     profile: string;
@@ -213,12 +212,6 @@ export interface TranslationSchema {
     emptyTitle: string;
     emptyText: string;
     errorTitle: string;
-  };
-  caregiver: {
-    title: string;
-    subtitle: string;
-    emptyTitle: string;
-    emptyText: string;
   };
   nutrition: {
     title: string;

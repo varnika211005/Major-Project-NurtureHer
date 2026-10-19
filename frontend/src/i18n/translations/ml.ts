@@ -42,7 +42,6 @@ export const ml: TranslationSchema = {
     ppd: "PPD കണ്ടെത്തൽ (വിഷാദം)",
     journal: "മൂഡ് ജേണൽ",
     nutrition: "പോഷകാഹാര ഗൈഡ്",
-    caregiver: "പരിചരണ മേഖല",
     emergency: "അടിയന്തര സഹായം",
     reports: "റിപ്പോർട്ടുകളും വിശകലനവും",
     profile: "പ്രൊഫൈൽ",
@@ -236,12 +235,6 @@ export const ml: TranslationSchema = {
     emptyTitle: "ഇതുവരെ വിവരങ്ങളൊന്നുമില്ല",
     emptyText: "വ്യക്തിഗത വിവരങ്ങൾ ലഭിക്കുന്നതിന് മൂഡ്, ലക്ഷണം, ചക്രം അല്ലെങ്കിൽ വിലയിരുത്തൽ രേഖകൾ ചേർക്കുക.",
     errorTitle: "വിവരങ്ങൾ ലഭ്യമല്ല",
-  },
-  caregiver: {
-    title: "പരിചരണ മേഖല",
-    subtitle: "പരിചരണ API-ൽ നിന്നുള്ള വിദ്യാഭ്യാസപരമായ ഉള്ളടക്കം.",
-    emptyTitle: "ഉള്ളടക്കമൊന്നും ലഭ്യമല്ല",
-    emptyText: "ഈ അക്കൗണ്ടിനായി ഉള്ളടക്കമൊന്നും ലഭ്യമല്ല.",
   },
   nutrition: {
     title: "പോഷകാഹാര ഗൈഡ്",

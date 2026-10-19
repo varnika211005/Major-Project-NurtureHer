@@ -42,7 +42,6 @@ export const en: TranslationSchema = {
     ppd: "PPD Detection",
     journal: "Mood Journal",
     nutrition: "Nutrition Guide",
-    caregiver: "Caregiver Zone",
     emergency: "Emergency Help",
     reports: "Reports & Analytics",
     profile: "Profile",
@@ -236,12 +235,6 @@ export const en: TranslationSchema = {
     emptyTitle: "No insights yet",
     emptyText: "Add mood, symptom, cycle, or assessment records to generate personal insights.",
     errorTitle: "Insights unavailable",
-  },
-  caregiver: {
-    title: "Caregiver Zone",
-    subtitle: "Educational content returned by the caregiver API.",
-    emptyTitle: "No caregiver content",
-    emptyText: "No content is available for this account.",
   },
   nutrition: {
     title: "Nutrition Guide",

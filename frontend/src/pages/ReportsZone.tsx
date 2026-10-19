@@ -1,10 +1,8 @@
-import { Download, FileSpreadsheet, FileText, Filter, Search, ShieldAlert, Sparkles } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Filter, Search, ShieldAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api, ReportItem } from "@/lib/api";
 import { useAuth } from "@/context/useAuth";
-import { useLanguage } from "@/context/useLanguage";
 import { Page } from "@/components/common/Page";
-import { SectionHeader } from "@/components/common/Premium";
 import { EmptyState, LoadingSkeleton } from "@/components/common/States";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +12,6 @@ import { exportReportsToCsv, printOrSaveClinicalReport } from "@/lib/reportPdf";
 
 export function ReportsZone() {
   const { user } = useAuth();
-  const { t } = useLanguage();
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState<string>("all");
@@ -96,7 +93,7 @@ export function ReportsZone() {
   return (
     <Page
       title="Clinical Reports Zone"
-      subtitle="Access, inspect, and download validated screening reports and doctor-visit briefs"
+      subtitle="Access, inspect, and download validated screening reports and clinical summaries"
     >
       {/* Overview Banner */}
       <div className="mb-6 rounded-[24px] border border-lavender-200/80 bg-gradient-to-br from-lavender-100/90 via-white to-lavender-50/70 p-6 shadow-soft dark:border-white/10 dark:from-white/10 dark:to-white/5">

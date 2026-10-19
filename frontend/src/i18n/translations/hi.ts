@@ -42,7 +42,6 @@ export const hi: TranslationSchema = {
     ppd: "पीपीडी जांच (अवसाद)",
     journal: "मूड जर्नल",
     nutrition: "पोषण मार्गदर्शिका",
-    caregiver: "देखभालकर्ता ज़ोन",
     emergency: "आपातकालीन सहायता",
     reports: "रिपोर्ट्स और विश्लेषण",
     profile: "प्रोफ़ाइल",
@@ -236,12 +235,6 @@ export const hi: TranslationSchema = {
     emptyTitle: "अभी तक कोई अंतर्दृष्टि नहीं",
     emptyText: "व्यक्तिगत अंतर्दृष्टि उत्पन्न करने के लिए मूड, लक्षण, चक्र या मूल्यांकन रिकॉर्ड जोड़ें।",
     errorTitle: "अंतर्दृष्टि अनुपलब्ध",
-  },
-  caregiver: {
-    title: "देखभालकर्ता ज़ोन",
-    subtitle: "देखभालकर्ता एपीआई से प्राप्त शैक्षिक सामग्री।",
-    emptyTitle: "कोई सामग्री उपलब्ध नहीं",
-    emptyText: "इस खाते के लिए कोई सामग्री उपलब्ध नहीं है।",
   },
   nutrition: {
     title: "पोषण मार्गदर्शिका",

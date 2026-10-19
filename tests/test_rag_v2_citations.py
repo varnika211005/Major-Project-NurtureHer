@@ -38,8 +38,8 @@ def test_malformed_markers_stripped():
     assert "[source:" not in result.text.replace("[source:pcos_guidance_001]", "")
     assert "[source:pcos_guidance_001]" in result.text
     assert result.report.stripped_malformed_count >= 3
-    # The malformed span is consumed through its first closing bracket.
-    assert result.text == "A B C D E[source:pcos_guidance_001]"
+    # Only openers are stripped; inner prose is preserved verbatim.
+    assert result.text == "A B Cpcos_guidance_001 Dpcos_guidance_001 E[end] E[source:pcos_guidance_001]"
 
 
 def test_empty_and_markerless_text():

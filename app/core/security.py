@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from uuid import UUID
 
+import bcrypt
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -15,7 +16,14 @@ class UserRole(str, Enum):
     ADMIN = "admin"
 
 
-import bcrypt
+def is_legacy_role_lookup_error(exc: LookupError) -> bool:
+    """True only for SQLAlchemy's enum-conversion LookupError raised while
+    loading a users.role value that UserRole no longer defines (legacy
+    'ASHA_WORKER' rows). Deliberately narrow so any other LookupError
+    propagates untouched."""
+    message = str(exc)
+    return "is not among the defined enum values" in message and "Enum name: user_role" in message
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

@@ -42,7 +42,6 @@ export const te: TranslationSchema = {
     ppd: "PPD గుర్తింపు (డిప్రెషన్)",
     journal: "మూడ్ జర్నల్",
     nutrition: "పోషకాహార గైడ్",
-    caregiver: "సంరక్షకుల జోన్",
     emergency: "అత్యవసర సహాయం",
     reports: "నివేదికలు & విశ్లేషణలు",
     profile: "ప్రొఫైల్",
@@ -236,12 +235,6 @@ export const te: TranslationSchema = {
     emptyTitle: "ఇంకా ఎలాంటి అంతర్దృష్టులు లేవు",
     emptyText: "వ్యక్తిగత అంతర్దృష్టులను రూపొందించడానికి మూడ్, లక్షణం, చక్రం లేదా అంచనా రికార్డులను జోడించండి.",
     errorTitle: "అంతర్దృష్టులు అందుబాటులో లేవు",
-  },
-  caregiver: {
-    title: "సంరక్షకుల జోన్",
-    subtitle: "సంరక్షకుల API నుండి పొందిన విద్యా విషయాలు.",
-    emptyTitle: "కంటెంట్ ఏదీ అందుబాటులో లేదు",
-    emptyText: "ఈ ఖాతా కోసం ఎలాంటి కంటెంట్ అందుబాటులో లేదు.",
   },
   nutrition: {
     title: "పోషకాహార గైడ్",

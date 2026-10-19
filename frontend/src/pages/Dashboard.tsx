@@ -1,12 +1,11 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Activity,
-  Baby,
   BarChart3,
   CalendarHeart,
   Check,
   ChevronRight,
-  Download,
+  Compass,
   HeartPulse,
   LifeBuoy,
   Plus,
@@ -21,7 +20,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, DashboardStats } from "@/lib/api";
-import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/common/States";
+import { ErrorState, LoadingSkeleton } from "@/components/common/States";
 import { MetricCard, SectionHeader } from "@/components/common/Premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -276,21 +275,6 @@ export function Dashboard() {
             </span>
           </div>
 
-          {/* Card 3: AI Doctor-Visit Prep */}
-          <div
-            onClick={() => navigate("/doctor-visit")}
-            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-white/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft dark:border-white/10 dark:bg-card"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 transition group-hover:bg-blue-600 group-hover:text-white dark:bg-white/10">
-              <Stethoscope className="h-5 w-5" />
-            </div>
-            <h3 className="mt-3 text-xs font-black text-ink dark:text-white">Doctor Visit Prep</h3>
-            <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">7-day summary & questions to ask.</p>
-            <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
-              Prepare visit <ChevronRight className="ml-0.5 h-3 w-3" />
-            </span>
-          </div>
-
           {/* Card 4: CareCircle QR Vault */}
           <div
             onClick={() => navigate("/carecircle")}
@@ -335,11 +319,24 @@ export function Dashboard() {
               View reports <ChevronRight className="ml-0.5 h-3 w-3" />
             </span>
           </div>
+
+          {/* Card 7: HerReach Healthcare Discovery */}
+          <div
+            id="mother-dashboard-herreach-card"
+            onClick={() => navigate("/herreach")}
+            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-white/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft dark:border-white/10 dark:bg-card"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender-100 text-primary transition group-hover:bg-primary group-hover:text-white dark:bg-white/10">
+              <Compass className="h-5 w-5" />
+            </div>
+            <h3 className="mt-3 text-xs font-black text-ink dark:text-white">HerReach Discovery</h3>
+            <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">Smart nearby facilities & care finder.</p>
+            <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
+              Find facilities <ChevronRight className="ml-0.5 h-3 w-3" />
+            </span>
+          </div>
         </div>
       </section>
-
-      {/* Wellness Insights */}
-      <Insights />
 
       {/* Symptom Logging Modal */}
       <DialogPrimitive.Root open={showSymptomModal} onOpenChange={setShowSymptomModal}>
@@ -434,38 +431,4 @@ export function Dashboard() {
 
 function riskProgress(value: string | null) {
   return value?.toLowerCase() === "high" ? 90 : value?.toLowerCase() === "moderate" ? 55 : value ? 20 : 0;
-}
-
-function Insights() {
-  const { t } = useLanguage();
-  const [items, setItems] = useState<{ category: string; severity: string; message: string }[]>([]);
-
-  useEffect(() => {
-    api.insights().then((response) => setItems(response.insights)).catch(() => undefined);
-  }, []);
-
-  return (
-    <Card className="p-6">
-      <SectionHeader title={t.dashboard.insightsTitle} subtitle={t.dashboard.insightsSubtitle} />
-      {items.length ? (
-        <div className="mt-4 space-y-3">
-          {items.map((item) => (
-            <div key={`${item.category}-${item.message}`} className="rounded-2xl border border-lavender-100 bg-lavender-50/50 p-4 dark:border-white/10 dark:bg-white/5">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-black capitalize text-ink dark:text-white">{item.category.replace(/_/g, " ")}</p>
-                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-black uppercase text-primary dark:bg-primary/20">
-                  {item.severity}
-                </span>
-              </div>
-              <p className="mt-1.5 text-xs leading-5 text-muted dark:text-white/60">{item.message}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="mt-4">
-          <EmptyState title={t.dashboard.noInsights} text={t.dashboard.noInsightsDesc} />
-        </div>
-      )}
-    </Card>
-  );
 }

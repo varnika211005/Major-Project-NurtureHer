@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.core.exceptions import AppError
-from app.core.security import decode_token, hash_password, verify_password
+from app.core.security import decode_token, hash_password, is_legacy_role_lookup_error, verify_password
 from app.models.user import User
 from app.repositories.users import UserRepository
 from app.schemas.auth import TokenPair, UserCreate
@@ -17,7 +17,14 @@ class AuthService:
         self.users = UserRepository(db)
 
     async def register(self, payload: UserCreate) -> User:
-        existing = await self.users.get_by_email(payload.email)
+        try:
+            existing = await self.users.get_by_email(payload.email)
+        except LookupError as exc:
+            if not is_legacy_role_lookup_error(exc):
+                raise
+            # Legacy-role row already owns this email: same conflict as any
+            # existing account.
+            raise AppError("Email already registered", status.HTTP_409_CONFLICT) from exc
         if existing:
             raise AppError("Email already registered", status.HTTP_409_CONFLICT)
         validate_password_policy(payload.password)
@@ -33,7 +40,14 @@ class AuthService:
         return user
 
     async def login(self, email: str, password: str) -> TokenPair:
-        user = await self.users.get_by_email(email)
+        try:
+            user = await self.users.get_by_email(email)
+        except LookupError as exc:
+            if not is_legacy_role_lookup_error(exc):
+                raise
+            # Legacy-role row: indistinguishable from an unknown email or a
+            # wrong password, so account existence is not revealed.
+            raise AppError("Invalid credentials", status.HTTP_401_UNAUTHORIZED) from exc
         if not user or not verify_password(password, user.password_hash):
             raise AppError("Invalid credentials", status.HTTP_401_UNAUTHORIZED)
         if not user.is_active:
@@ -48,7 +62,12 @@ class AuthService:
             user_id, _ = await token_service.rotate_refresh_token(refresh_token)
         except ValueError as exc:
             raise AppError("Invalid refresh token", status.HTTP_401_UNAUTHORIZED) from exc
-        user = await self.users.get(UUID(user_id))
+        try:
+            user = await self.users.get(UUID(user_id))
+        except LookupError as exc:
+            if not is_legacy_role_lookup_error(exc):
+                raise
+            raise AppError("User not found", status.HTTP_404_NOT_FOUND) from exc
         if not user:
             raise AppError("User not found", status.HTTP_404_NOT_FOUND)
         tokens = await token_service.issue_pair(user)
@@ -56,7 +75,13 @@ class AuthService:
         return tokens
 
     async def forgot_password(self, email: str) -> None:
-        await self.users.get_by_email(email)
+        try:
+            await self.users.get_by_email(email)
+        except LookupError as exc:
+            if not is_legacy_role_lookup_error(exc):
+                raise
+            # Legacy-role row: respond exactly as for an unknown email.
+            return
 
     async def logout(self, refresh_token: str) -> None:
         try:
@@ -76,9 +101,15 @@ class AuthService:
     async def reset_password(self, token: str, new_password: str) -> None:
         try:
             payload = decode_token(token, "reset")
-        except ValueError as exc:
+            subject = UUID(payload["sub"])
+        except (ValueError, KeyError) as exc:
             raise AppError("Invalid reset token", status.HTTP_401_UNAUTHORIZED) from exc
-        user = await self.users.get(payload["sub"])
+        try:
+            user = await self.users.get(subject)
+        except LookupError as exc:
+            if not is_legacy_role_lookup_error(exc):
+                raise
+            raise AppError("User not found", status.HTTP_404_NOT_FOUND) from exc
         if not user:
             raise AppError("User not found", status.HTTP_404_NOT_FOUND)
         validate_password_policy(new_password)

@@ -57,3 +57,7 @@ build/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Untracked local artifacts (audit-approved 2026-10-19)
+data/
+celerybeat-schedule

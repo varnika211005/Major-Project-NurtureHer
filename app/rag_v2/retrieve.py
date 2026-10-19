@@ -11,6 +11,7 @@ identical to the v1 FAISS path.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -45,28 +46,73 @@ class MissingThresholdError(RuntimeError):
     """Raised when no calibrated threshold exists for a backend."""
 
 
+def _checked_cutoff(value: object, *, backend: object, category: object | None) -> float:
+    """Validate one calibrated cutoff; raise MissingThresholdError if invalid."""
+    where = f"backend {backend!r}"
+    if category is not None:
+        where += f" category {category!r}"
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise MissingThresholdError(f"threshold for {where} must be a number, got {value!r}")
+    cutoff = float(value)
+    if not math.isfinite(cutoff):
+        raise MissingThresholdError(f"threshold for {where} must be finite")
+    if not -1.0 <= cutoff <= 1.0:
+        raise MissingThresholdError(f"threshold for {where} must lie in [-1, 1] (cosine range)")
+    return cutoff
+
+
 class ThresholdTable:
     """Calibrated per-backend similarity cutoffs.
 
     `table` maps backend name -> {"default": float, "per_category": {...}}.
     Produced by scripts/ops/calibrate_rag_v2_thresholds.py from measured
     score distributions; never hand-tuned here.
+
+    Entries are strictly validated at construction: cutoffs must be real
+    (non-bool) numbers, finite, and inside the [-1, 1] cosine range that
+    every supported backend produces (L2-normalized embeddings — see
+    embeddings.py and store.py). Numeric strings are rejected, not
+    coerced. Anything else raises MissingThresholdError: fail closed.
     """
 
     def __init__(self, table: dict) -> None:
-        self._table = table
+        if not isinstance(table, dict) or not table:
+            raise MissingThresholdError("threshold table is empty or malformed")
+        validated: dict[str, dict[str, object]] = {}
+        for backend, entry in table.items():
+            if not isinstance(entry, dict) or "default" not in entry:
+                raise MissingThresholdError(
+                    f"threshold entry for backend {backend!r} must define 'default'"
+                )
+            default = _checked_cutoff(entry["default"], backend=backend, category=None)
+            per_category = entry.get("per_category", {})
+            if not isinstance(per_category, dict):
+                raise MissingThresholdError(
+                    f"per_category for backend {backend!r} must be a mapping"
+                )
+            validated[backend] = {
+                "default": default,
+                "per_category": {
+                    category: _checked_cutoff(value, backend=backend, category=category)
+                    for category, value in per_category.items()
+                },
+            }
+        self._table = validated
 
     def get(self, backend: str, category: str | None = None) -> float:
         try:
             entry = self._table[backend]
-            default = entry["default"]
         except (KeyError, TypeError) as exc:
             raise MissingThresholdError(f"no calibrated threshold for backend {backend!r}") from exc
         if category is not None:
-            per_category = entry.get("per_category") or {}
+            if not isinstance(category, str):
+                raise MissingThresholdError(
+                    f"threshold category must be a string, got {type(category).__name__}"
+                )
+            per_category = entry["per_category"]
             if category in per_category:
-                return float(per_category[category])
-        return float(default)
+                return per_category[category]
+        return entry["default"]
 
     @classmethod
     def from_dict(cls, data: dict) -> "ThresholdTable":
@@ -79,7 +125,8 @@ class Retriever:
     """Top-k cosine retrieval with calibrated threshold filtering.
 
     `doc_categories` maps document id -> topic category and enables
-    optional category-scoped retrieval.
+    optional category-scoped retrieval. `category` (per-call) selects the
+    matching per-category calibrated cutoff; None uses the backend default.
     """
 
     def __init__(self, backend, store, thresholds: ThresholdTable, doc_categories: dict[str, str] | None = None) -> None:
@@ -93,8 +140,9 @@ class Retriever:
         query: str,
         top_k: int = 4,
         allowed_categories: set[str] | None = None,
+        category: str | None = None,
     ) -> RetrievalResult:
-        threshold = self.thresholds.get(self.backend.name)
+        threshold = self.thresholds.get(self.backend.name, category)
         query_vector = self.backend.embed([query])[0]
         ranked = self.store.rank(query_vector, top_k)
         if allowed_categories is not None:

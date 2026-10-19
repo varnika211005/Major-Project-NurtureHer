@@ -49,6 +49,7 @@ class Chunk:
     text: str
     language: str
     topics: tuple[str, ...] = ()
+    pages: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)

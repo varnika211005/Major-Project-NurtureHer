@@ -18,9 +18,13 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 # Strict markers first; anything else that opens like a source marker
-# (empty id, whitespace, wrong case, unclosed) is malformed. Single pass so
-# valid markers are never re-examined by the malformed branch.
-_COMBINED_RE = re.compile(r"\[source:(?P<valid>[^\]\s]+)\]" r"|\[(?:source|SOURCES?|Source):[^\]]*\]?" r"|\[source:$")
+# (empty id, whitespace, wrong case, unclosed) is malformed. Malformed
+# matches preserve their inner text -- only the opener is stripped -- so
+# validation can never delete neighboring prose. The inner capture stops
+# at any bracket, so an unclosed marker never consumes a later "]" that
+# belongs to surrounding text. Single pass so valid markers are never
+# re-examined by the malformed branch.
+_COMBINED_RE = re.compile(r"\[source:(?P<valid>[^\]\s]+)\]" r"|\[(?:source|SOURCES?|Source):(?P<inner>[^\]\[]*)(?P<closer>\])?")
 
 
 @dataclass(frozen=True)
@@ -52,7 +56,8 @@ def validate(text: str, cited_ids: set[str] | tuple[str, ...]) -> CitationResult
         raw_id = match.group("valid")
         if raw_id is None:
             malformed += 1
-            return ""
+            inner = match.group("inner") or ""
+            return inner if inner.strip() else ""
         if raw_id in allowed:
             valid.append(raw_id)
             return match.group(0)
