@@ -19,8 +19,12 @@ class MotherProfileCreate(BaseModel):
     village: str | None = Field(default=None, max_length=120)
 
 
-class MotherProfileUpdate(MotherProfileCreate):
-    age: int | None = Field(default=None, ge=10, le=70)
+class MotherProfileUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=255)
+    phone: str | None = Field(default=None, max_length=32)
+    preferred_language: str | None = Field(default=None, min_length=2, max_length=16)
+    # Mother biometrics & health fields
+    age: int | None = Field(default=None, ge=10, le=120)
     weight: float | None = Field(default=None, gt=0, le=250)
     height: float | None = Field(default=None, gt=0, le=250)
     blood_group: str | None = Field(default=None, max_length=8)
@@ -29,6 +33,16 @@ class MotherProfileUpdate(MotherProfileCreate):
     emergency_contact: str | None = Field(default=None, max_length=32)
     district: str | None = Field(default=None, max_length=120)
     village: str | None = Field(default=None, max_length=120)
+    # Doctor professional fields
+    specialization: str | None = Field(default=None, max_length=120)
+    qualifications: str | None = Field(default=None, max_length=255)
+    experience_years: int | None = Field(default=None, ge=0, le=80)
+    hospital_clinic: str | None = Field(default=None, max_length=255)
+    # Caregiver fields
+    relationship_label: str | None = Field(default=None, max_length=80)
+
+
+ProfileUpdate = MotherProfileUpdate
 
 
 class MotherProfileRead(ORMModel):

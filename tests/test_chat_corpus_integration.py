@@ -83,6 +83,27 @@ async def _cases_and_alerts(db_session):
     return cases, alerts
 
 
+async def test_greeting_skips_retrieval_and_generation(db_session, monkeypatch, _no_sms):
+    async def _forbidden(self, prompt, language="en"):
+        raise AssertionError("retrieval/generation must be bypassed for a greeting")
+
+    monkeypatch.setattr(GeminiService, "generate_response", _forbidden)
+    mother = await make_chat_user(db_session, email="e2e-greeting@example.com")
+    chat = await ChatbotService(db_session).message(mother, ChatRequest(message="Hello!", language="en"))
+    assert "Hello" in chat.response
+    assert "don't have enough reliable information" not in chat.response
+    assert "It may make mistakes" in chat.response
+    assert chat.sources == []
+
+
+async def test_hindi_greeting_is_localized(db_session, _no_sms):
+    mother = await make_chat_user(db_session, email="e2e-greeting-hi@example.com")
+    chat = await ChatbotService(db_session).message(mother, ChatRequest(message="नमस्ते", language="hi"))
+    assert "नमस्ते" in chat.response
+    assert "don't have enough reliable information" not in chat.response
+    assert chat.language == "hi"
+
+
 async def test_tired_gets_support_without_escalation(db_session, _canned_gemini, _no_sms):
     mother = await make_chat_user(db_session, email="e2e-tired@example.com")
     chat = await ChatbotService(db_session).message(mother, ChatRequest(message="I feel tired.", language="en"))
@@ -109,6 +130,8 @@ async def test_overwhelmed_opens_case_without_alerts(db_session, _canned_gemini,
         mother, ChatRequest(message="I feel overwhelmed and don't know what to do.", language="en")
     )
     assert "It may make mistakes" in chat.response
+    assert "don't have enough reliable information" not in chat.response
+    assert "I'm here with you" in chat.response
     cases, alerts = await _cases_and_alerts(db_session)
     assert len(cases) == 1 and cases[0].risk_level.value == "moderate"
     assert alerts == [] and _no_sms == []
@@ -169,11 +192,17 @@ async def test_fabricated_citations_stripped_valid_kept(db_session, monkeypatch,
     monkeypatch.setattr(GeminiService, "generate_response", _canned)
     monkeypatch.setattr(ChatbotService, "_retrieve", _retrieve)
     mother = await make_chat_user(db_session, email="e2e-cite@example.com")
-    chat = await ChatbotService(db_session).message(
+    service = ChatbotService(db_session)
+    chat = await service.message(
         mother, ChatRequest(message="What are the signs of PCOS?", language="en")
     )
     assert "[source:pcos_guidance_001]" in chat.response
     assert "miracle_cure_999" not in chat.response
+    assert [source["id"] for source in chat.sources] == ["pcos_guidance_001"]
+    assert chat.sources[0]["title"] == "PCOS guidance"
+
+    history = await service.history(mother)
+    assert [source["id"] for source in history[0].sources] == ["pcos_guidance_001"]
 
 
 async def test_escalation_failure_never_breaks_reply(db_session, monkeypatch, _canned_gemini, _no_sms):

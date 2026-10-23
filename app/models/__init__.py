@@ -4,6 +4,7 @@ from app.models.caregiver import CaregiverContent
 from app.models.carecircle import CareCircleAccess, CareCircleQR
 from app.models.chat import ChatMessage
 from app.models.doctor import DoctorNote, DoctorPatient
+from app.models.education import EducationalResource
 from app.models.nutrition import HydrationLog, NutritionCarePlan, NutritionInteraction, NutritionPlan, NutritionProfile
 from app.models.pcos import PCOSPrediction
 from app.models.ppd import PPDAssessment
@@ -20,6 +21,7 @@ __all__ = [
     "Cycle",
     "DoctorNote",
     "DoctorPatient",
+    "EducationalResource",
     "HighRiskCase",
     "HydrationLog",
     "Journal",

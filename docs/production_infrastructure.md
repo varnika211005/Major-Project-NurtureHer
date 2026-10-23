@@ -5,7 +5,7 @@ NurtureHer includes an additive production entrypoint at `app.production_main:ap
 ## Security
 
 - JWT access tokens and rotating refresh tokens are implemented in the application service layer.
-- Passwords are hashed with Passlib bcrypt.
+- Passwords are hashed with bcrypt; the current implementation truncates input at 72 bytes.
 - SQL injection risk is reduced by SQLAlchemy parameterized queries and Pydantic validation.
 - Input sanitization middleware blocks common script and SQL probe patterns.
 - `app.production_main` adds security response headers and gzip compression.
@@ -33,7 +33,7 @@ NurtureHer includes an additive production entrypoint at `app.production_main:ap
 
 ## Docker
 
-`docker-compose.override.yml` is loaded automatically by Docker Compose and configures:
+`docker-compose.override.yml` is loaded automatically by plain `docker compose up`. It configures:
 
 - production API startup through `scripts/docker/start_api.sh`
 - Celery worker startup through `scripts/docker/start_worker.sh`
@@ -42,10 +42,8 @@ NurtureHer includes an additive production entrypoint at `app.production_main:ap
 - Redis memory policy
 - PostgreSQL connection and memory settings
 
-Run:
+This means plain `docker compose up --build` is **not** a no-configuration development command: it switches the API to production settings and runs strict configuration checks. For local development, use `docker compose -f docker-compose.yml up --build` as described in [`DEVELOPMENT_RUNBOOK.md`](./DEVELOPMENT_RUNBOOK.md). For production, use `docker compose -f docker-compose.prod.yml up --build -d`.
 
-```sh
-docker compose up --build
-```
+The development override defines a beat service, but `docker-compose.prod.yml` currently does not. Verify scheduled-job coverage before depending on beat-driven tasks in production.
 
-Startup seeding is disabled by default. Use `RUN_SEED_ON_STARTUP=true` only for controlled demo environments.
+Startup seeding is disabled by default. Use `RUN_SEED_ON_STARTUP=true` only for controlled demo environments and provide `NURTUREHER_DEMO_PASSWORD`; the seed script prints that password. There is no current use of `NURTUREHER_SEED_ADMIN_PASSWORD`.

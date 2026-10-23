@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { api, CyclePrediction, PCOSPrediction, PPDAssessment } from "@/lib/api";
+import { formatDate } from "@/lib/locale";
 import { generatePrintableReportWindow } from "@/lib/reportPdf";
 import { CalendarGrid } from "@/components/common/CalendarGrid";
 import { FormField, TextAreaField } from "@/components/common/FormField";
@@ -25,70 +25,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useLanguage } from "@/context/useLanguage";
 import { useAuth } from "@/context/useAuth";
-
-/** Blank-aware coercion: empty input -> undefined (triggers a friendly
- * required message) instead of silently becoming NaN or 0. Numeric strings
- * from <input type="number"> are converted to numbers for validation. */
-function blankToUndefined(value: unknown): unknown {
-  if (value === "" || value === null || value === undefined) return undefined;
-  if (typeof value === "number" && Number.isNaN(value)) return undefined;
-  if (typeof value === "string") {
-    if (value.trim() === "") return undefined;
-    const parsed = Number(value);
-    return Number.isNaN(parsed) ? value : parsed;
-  }
-  return value;
-}
-
-export const pcosSchema = z.object({
-  age: z.preprocess(
-    blankToUndefined,
-    z.number({ required_error: "Age is required.", invalid_type_error: "Age is required." })
-      .min(10, "Age must be at least 10.")
-      .max(60, "Age must be 60 or below."),
-  ),
-  bmi: z.preprocess(
-    blankToUndefined,
-    z.number({ required_error: "BMI is required.", invalid_type_error: "BMI is required." })
-      .positive("BMI must be greater than 0.")
-      .max(80, "BMI must be 80 or below."),
-  ),
-  // NOTE: a single custom check (not z.union) so the resolver surfaces one
-  // clear message instead of a nested literal mismatch.
-  cycle: z.preprocess(
-    blankToUndefined,
-    z.custom<2 | 4>(
-      (value): value is 2 | 4 => value === 2 || value === 4,
-      "Please select a cycle category.",
-    ),
-  ),
-  cycleLength: z.preprocess(
-    blankToUndefined,
-    z.number({ required_error: "Cycle length is required.", invalid_type_error: "Cycle length is required." })
-      .min(1, "Cycle length must be at least 1 day.")
-      .max(100, "Cycle length must be 100 days or below."),
-  ),
-  weightGain: z.boolean().default(false),
-  hairGrowth: z.boolean().default(false),
-  skinDarkening: z.boolean().default(false),
-  hairLoss: z.boolean().default(false),
-  pimples: z.boolean().default(false),
-});
-export type PCOSForm = z.infer<typeof pcosSchema>;
-
-// Blank defaults for a new screening. Casts are needed because the validated
-// output type is numeric while the form must start empty (undefined).
-export const pcosBlankDefaults = {
-  age: undefined as unknown as number,
-  bmi: undefined as unknown as number,
-  cycle: undefined as unknown as 2 | 4,
-  cycleLength: undefined as unknown as number,
-  weightGain: false,
-  hairGrowth: false,
-  skinDarkening: false,
-  hairLoss: false,
-  pimples: false,
-};
+import { PCOSForm, pcosBlankDefaults, pcosSchema } from "./clinical-schemas";
 
 export function PCOSPage() {
   const { t } = useLanguage();
@@ -148,7 +85,7 @@ export function PCOSPage() {
         {
           title: "Polycystic Ovary Syndrome (PCOS) Screening Estimate",
           type: "PCOS",
-          date: new Date(result.created_at).toLocaleDateString(),
+          date: formatDate(result.created_at),
           risk_level: result.risk_level,
           score: `${Math.round(result.probability * 100)}% Probability`,
           recommendations: result.recommendations,
@@ -176,7 +113,7 @@ export function PCOSPage() {
   return (
     <Page title={t.pcos.title} subtitle={t.pcos.subtitle}>
       {/* Medical Disclaimer Banner */}
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs leading-relaxed text-lavender-900 shadow-sm dark:border-lavender-800/40 dark:bg-lavender-950/40 dark:text-lavender-200">
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs leading-relaxed text-lavender-900 shadow-sm">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div>
           <span className="font-bold">Medical Disclaimer:</span> This PCOS screening estimate uses the nine
@@ -208,13 +145,13 @@ export function PCOSPage() {
               <div className="space-y-2">
                 <label
                   htmlFor={cycleSelectId}
-                  className="text-sm font-semibold text-ink dark:text-white"
+                  className="text-sm font-semibold text-ink"
                 >
                   {t.pcos.cycleCategory}
                 </label>
                 <select
                   id={cycleSelectId}
-                  className="w-full rounded-xl border border-lavender-100 bg-white p-3 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  className="w-full rounded-xl border border-lavender-100 bg-surface p-3 text-sm text-ink"
                   defaultValue=""
                   {...register("cycle")}
                 >
@@ -230,13 +167,13 @@ export function PCOSPage() {
               </div>
 
               <div className="space-y-2 pt-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted dark:text-white/60">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted">
                   Phenotypic & Symptom Indicators
                 </p>
                 {checkboxes.map(([label, name]) => (
                   <label
                     key={name}
-                    className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs font-bold text-ink transition hover:bg-lavender-100/50 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                    className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs font-bold text-ink transition hover:bg-lavender-100/50"
                   >
                     <span>{label}</span>
                     <input
@@ -260,10 +197,10 @@ export function PCOSPage() {
           <PCOSResult result={result} formValues={lastFormValues} onDownloadReport={handleDownloadReport} />
 
           <Card className="p-6">
-            <h3 className="mb-4 text-sm font-black text-ink dark:text-white">Historical PCOS Screenings</h3>
+            <h3 className="mb-4 text-sm font-black text-ink">Historical PCOS Screenings</h3>
             <DataTable
               rows={history.map((item) => ({
-                date: new Date(item.created_at).toLocaleDateString(),
+                date: formatDate(item.created_at),
                 risk: item.risk_level,
                 probability: `${Math.round(item.probability * 100)}%`,
               }))}
@@ -301,7 +238,7 @@ function PCOSResult({
     <Card className="overflow-hidden p-6">
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
         <div className="flex items-center gap-5">
-          <div className="rounded-3xl border border-lavender-200 bg-lavender-50/70 p-4 text-center dark:border-white/10 dark:bg-white/5">
+          <div className="rounded-3xl border border-lavender-200 bg-lavender-50/70 p-4 text-center">
             <HeartPulse className="mx-auto mb-2 h-8 w-8 text-primary" />
             <Gauge value={percentage} label={`${result.risk_level} Risk`} />
           </div>
@@ -309,8 +246,8 @@ function PCOSResult({
             <Badge variant="outline" className="border-emerald-300 text-emerald-700 dark:text-emerald-300">
               Model-based screening estimate
             </Badge>
-            <h3 className="mt-2 text-xl font-black text-ink dark:text-white">{t.pcos.recommendationSummary}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-muted dark:text-white/60">{result.recommendations}</p>
+            <h3 className="mt-2 text-xl font-black text-ink">{t.pcos.recommendationSummary}</h3>
+            <p className="mt-1 text-xs leading-relaxed text-muted">{result.recommendations}</p>
           </div>
         </div>
 
@@ -321,30 +258,30 @@ function PCOSResult({
 
       {/* Submitted inputs for this result (echo of what was sent, not model explanations) */}
       {formValues && (
-        <div className="mt-6 border-t border-lavender-100 pt-5 dark:border-white/10">
-          <h4 className="text-xs font-black uppercase tracking-wider text-muted dark:text-white/60">
+          <div className="mt-6 border-t border-lavender-100 pt-5">
+          <h4 className="text-xs font-black uppercase tracking-wider text-muted">
             Submitted inputs for this result
           </h4>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs">
               <span className="text-muted">Age:</span>
-              <p className="font-bold text-ink dark:text-white">{formValues.age}</p>
+              <p className="font-bold text-ink">{formValues.age}</p>
             </div>
-            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs">
               <span className="text-muted">BMI:</span>
-              <p className="font-bold text-ink dark:text-white">{formValues.bmi}</p>
+              <p className="font-bold text-ink">{formValues.bmi}</p>
             </div>
-            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs">
               <span className="text-muted">Cycle category:</span>
-              <p className="font-bold text-ink dark:text-white">Category {formValues.cycle}</p>
+              <p className="font-bold text-ink">Category {formValues.cycle}</p>
             </div>
-            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs">
               <span className="text-muted">Cycle length:</span>
-              <p className="font-bold text-ink dark:text-white">{formValues.cycleLength} days</p>
+              <p className="font-bold text-ink">{formValues.cycleLength} days</p>
             </div>
-            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+            <div className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs">
               <span className="text-muted">Symptoms noted:</span>
-              <p className="font-bold text-ink dark:text-white">
+              <p className="font-bold text-ink">
                 {[
                   formValues.weightGain && "weight gain",
                   formValues.hairGrowth && "hair growth",
@@ -357,7 +294,7 @@ function PCOSResult({
               </p>
             </div>
           </div>
-          <p className="mt-3 text-[11px] leading-relaxed text-muted dark:text-white/60">
+          <p className="mt-3 text-[11px] leading-relaxed text-muted">
             This is a screening estimate based on the inputs above, not a medical diagnosis.
           </p>
         </div>
@@ -398,7 +335,7 @@ export function PPDPage() {
         {
           title: "Edinburgh Postnatal Depression Scale (EPDS) Screening",
           type: "PPD",
-          date: new Date(result.created_at).toLocaleDateString(),
+          date: formatDate(result.created_at),
           risk_level: result.risk_level,
           score: `EPDS Score: ${result.epds_score}/30`,
           sentiment: result.sentiment,
@@ -416,7 +353,7 @@ export function PPDPage() {
   return (
     <Page title={t.ppd.title} subtitle={t.ppd.subtitle}>
       {/* Medical Disclaimer Banner */}
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs leading-relaxed text-lavender-900 shadow-sm dark:border-lavender-800/40 dark:bg-lavender-950/40 dark:text-lavender-200">
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs leading-relaxed text-lavender-900 shadow-sm">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div>
           <span className="font-bold">Clinical Care Standard:</span> The Edinburgh Postnatal Depression Scale (EPDS) is a
@@ -432,9 +369,9 @@ export function PPDPage() {
             {t.ppd.epdsQuestions.map((question, index) => (
               <div
                 key={index}
-                className="rounded-2xl border border-lavender-100 bg-lavender-50/40 p-4 dark:border-white/10 dark:bg-white/5"
+                className="rounded-2xl border border-lavender-100 bg-lavender-50/40 p-4"
               >
-                <p className="text-xs font-bold text-ink dark:text-white">
+                <p className="text-xs font-bold text-ink">
                   {index + 1}. {question}
                 </p>
                 <div className="mt-3 grid grid-cols-4 gap-2">
@@ -483,7 +420,7 @@ export function PPDPage() {
           {result ? (
             <Card className="p-6">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-muted dark:text-white/60">
+                <span className="text-xs font-black uppercase tracking-wider text-muted">
                   Assessment Outcome
                 </span>
                 <Button variant="secondary" size="sm" onClick={handleDownloadPPDReport} className="gap-1 text-xs">
@@ -492,11 +429,11 @@ export function PPDPage() {
               </div>
 
               <div className="mt-4 flex items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 dark:bg-purple-900/40">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
                   <ShieldAlert className="h-7 w-7" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-ink dark:text-white">
+                  <h3 className="text-2xl font-black text-ink">
                     Score: {result.epds_score}/30
                   </h3>
                   <p className="text-xs font-bold capitalize text-primary">Risk Tier: {result.risk_level}</p>
@@ -505,9 +442,9 @@ export function PPDPage() {
 
               <Progress value={Math.min(100, (result.epds_score * 100) / 30)} className="mt-4" />
 
-              <div className="mt-4 rounded-xl bg-lavender-50/50 p-3 text-xs text-muted dark:bg-white/5 dark:text-white/60">
+              <div className="mt-4 rounded-xl bg-lavender-50/50 p-3 text-xs text-muted">
                 <p>
-                  <span className="font-bold text-ink dark:text-white">Sentiment Telemetry:</span> {result.sentiment}
+                  <span className="font-bold text-ink">Sentiment Telemetry:</span> {result.sentiment}
                 </p>
                 <p className="mt-1">
                   {result.epds_score >= 10
@@ -524,10 +461,10 @@ export function PPDPage() {
           )}
 
           <Card className="p-6">
-            <h3 className="mb-4 text-sm font-black text-ink dark:text-white">Assessment History</h3>
+            <h3 className="mb-4 text-sm font-black text-ink">Assessment History</h3>
             <DataTable
               rows={history.map((item) => ({
-                date: new Date(item.created_at).toLocaleDateString(),
+                date: formatDate(item.created_at),
                 score: `${item.epds_score}/30`,
                 risk: item.risk_level,
               }))}
@@ -675,11 +612,11 @@ export function EmergencyPage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <Card className="border-lavender-100 p-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-ink dark:text-white">National Emergency</h3>
+            <h3 className="text-sm font-black text-ink">National Emergency</h3>
             <Badge className="bg-rose-100 text-rose-700">24/7 Police & Fire</Badge>
           </div>
           <div className="mt-3 text-2xl font-black text-primary">112</div>
-          <p className="mt-1 text-xs text-muted dark:text-white/50">All-India unified emergency service</p>
+          <p className="mt-1 text-xs text-muted">All-India unified emergency service</p>
           <Button size="sm" variant="secondary" className="mt-4 w-full" onClick={() => window.open("tel:112")}>
             Call 112
           </Button>
@@ -687,11 +624,11 @@ export function EmergencyPage() {
 
         <Card className="border-lavender-100 p-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-ink dark:text-white">Ambulance Service</h3>
-            <Badge className="bg-amber-100 text-amber-700">Medical Transit</Badge>
-          </div>
-          <div className="mt-3 text-2xl font-black text-amber-600">108 / 102</div>
-          <p className="mt-1 text-xs text-muted dark:text-white/50">Free maternal & infant ambulance</p>
+            <h3 className="text-sm font-black text-ink">Ambulance Service</h3>
+              <Badge className="bg-warning/15 text-orange-700 dark:text-orange-300">Medical Transit</Badge>
+            </div>
+            <div className="mt-3 text-2xl font-black text-orange-700 dark:text-orange-300">108 / 102</div>
+          <p className="mt-1 text-xs text-muted">Free maternal & infant ambulance</p>
           <Button size="sm" variant="secondary" className="mt-4 w-full" onClick={() => window.open("tel:108")}>
             Call 108
           </Button>
@@ -699,11 +636,11 @@ export function EmergencyPage() {
 
         <Card className="border-lavender-100 p-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-ink dark:text-white">Maternal Health Helpline</h3>
+            <h3 className="text-sm font-black text-ink">Maternal Health Helpline</h3>
             <Badge className="bg-emerald-100 text-emerald-700">Tele-triage</Badge>
           </div>
           <div className="mt-3 text-2xl font-black text-emerald-600">104</div>
-          <p className="mt-1 text-xs text-muted dark:text-white/50">State health information & clinical advice</p>
+          <p className="mt-1 text-xs text-muted">State health information & clinical advice</p>
           <Button size="sm" variant="secondary" className="mt-4 w-full" onClick={() => window.open("tel:104")}>
             Call 104
           </Button>

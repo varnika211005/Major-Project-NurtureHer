@@ -1,4 +1,8 @@
-# 💻 NurtureHer AI — Beginner's Setup & Run Guide (Windows + VS Code)
+# NurtureHer AI — Beginner's Setup & Run Guide (Historical)
+
+> **SUPERSEDED / HISTORICAL — do not use as the current setup guide.**
+>
+> This walkthrough reflects an older project state. Its one-click demo-login instructions are outdated, and its final “clinic-ready” statement is not a current claim. Use [`docs/DEVELOPMENT_RUNBOOK.md`](docs/DEVELOPMENT_RUNBOOK.md) for the verified local setup and [`docs/README.md`](docs/README.md) for the documentation index. The original content is retained for project history.
 
 Welcome! This step-by-step tutorial explains exactly how to run **NurtureHer AI** on any Windows laptop using **Visual Studio Code (VS Code)**. Even if you have never set up a full-stack Python + React app before, follow these instructions step by step.
 

@@ -5,6 +5,8 @@
  * explainability notes, and required medical safety disclaimers.
  */
 
+import { formatDate } from "@/lib/locale";
+
 export interface ReportExportData {
   reportTitle: string;
   reportType: "PCOS Screening" | "PPD Screening" | "Doctor Visit Summary" | "Wellness Summary";
@@ -413,7 +415,7 @@ export function generatePrintableReportWindow(options: PrintableReportWindowOpti
       <p style="margin: 0; font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Clinical Decision Support Portal</p>
     </div>
     <div style="text-align: right; font-size: 12px; color: #64748B;">
-      <div><strong>Date:</strong> ${new Date().toLocaleDateString()}</div>
+      <div><strong>Date:</strong> ${formatDate(new Date())}</div>
       <div><strong>Generated via:</strong> NurtureHer Telemetry Suite</div>
     </div>
   </div>

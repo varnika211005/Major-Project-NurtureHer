@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/context/auth-context";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { api } from "@/lib/api";
-import { PCOSPage, pcosBlankDefaults, pcosSchema } from "./ClinicalPages";
+import { PCOSPage } from "./ClinicalPages";
+import { pcosBlankDefaults, pcosSchema } from "./clinical-schemas";
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/api")>();

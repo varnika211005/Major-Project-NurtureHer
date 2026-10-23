@@ -233,6 +233,7 @@ export interface GuideTabLink {
 
 interface HeroProps {
   pill: string;
+  exploreDemoLabel: string;
   heroWords: { w: string; style: string }[];
   heroLead: string;
   getStartedLabel: string;
@@ -265,7 +266,7 @@ interface HeroProps {
 
 export function Hero(props: HeroProps) {
   const {
-    pill, heroWords, heroLead, getStartedLabel, openLetterLabel, bubbles,
+    pill, exploreDemoLabel, heroWords, heroLead, getStartedLabel, openLetterLabel, bubbles,
     w1, w2, w3, winCheck, winNote, winGuides, minAria, closeWinAria,
     anyClosed, onResetWindows, moods, moodReply, feelLabel, todayWill,
     twLines, twTyping, twDone, statusSup, guideTabs, topics6, resetWinsLabel,
@@ -278,8 +279,18 @@ export function Hero(props: HeroProps) {
 
       <div className="wrap" style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "center", gap: 48 }}>
         <div style={{ flex: "1 1 460px", minWidth: 0 }}>
-          <div className="pill" style={{ animation: "glide .9s cubic-bezier(.2,.7,.2,1) 0.05s backwards" }}>
-            {pill}
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, animation: "glide .9s cubic-bezier(.2,.7,.2,1) 0.05s backwards" }}>
+            <div className="pill" style={{ margin: 0 }}>
+              {pill}
+            </div>
+            <Link
+              className="pill"
+              to="/demo"
+              aria-label={exploreDemoLabel}
+              style={{ margin: 0, textDecoration: "none", cursor: "pointer" }}
+            >
+              {exploreDemoLabel}
+            </Link>
           </div>
           <h1
             className="disp"

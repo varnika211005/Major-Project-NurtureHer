@@ -71,10 +71,37 @@ async def main() -> None:
         # 1. Seed Core Demo Users
         demo_pwd = os.getenv("NURTUREHER_DEMO_PASSWORD", "Password123!")
 
-        mother = await ensure_user(db, "mother@nurtureher.com", "Ananya Sharma", demo_pwd, UserRole.MOTHER)
         doctor = await ensure_user(db, "doctor@nurtureher.com", "Dr. Priya Rao, MD", demo_pwd, UserRole.DOCTOR)
+        doctor.custom_id = "DOC-100001"
+        doctor.medical_license = "MCI-2024-98765"
+        doctor.is_verified = True
+
+        mother = await ensure_user(db, "mother@nurtureher.com", "Ananya Sharma", demo_pwd, UserRole.MOTHER)
+        mother.custom_id = "MTH-100001"
+        mother.assigned_doctor_id = "DOC-100001"
+        mother.age = 28
+        mother.is_verified = True
+
         caregiver = await ensure_user(db, "caregiver@nurtureher.com", "Ramesh Sharma", demo_pwd, UserRole.CAREGIVER)
+        caregiver.custom_id = "CRG-100001"
+        caregiver.assigned_mother_id = "MTH-100001"
+        caregiver.is_verified = True
+
         admin = await ensure_user(db, "admin@nurtureher.com", "NurtureHer Administrator", demo_pwd, UserRole.ADMIN)
+
+        from app.models.doctor import DoctorPatient
+        from app.models.carecircle import CareCircleAccess
+        existing_dp = await db.scalar(
+            select(DoctorPatient).where(DoctorPatient.doctor_id == doctor.id, DoctorPatient.patient_id == mother.id)
+        )
+        if not existing_dp:
+            db.add(DoctorPatient(doctor_id=doctor.id, patient_id=mother.id, status="active"))
+
+        existing_cca = await db.scalar(
+            select(CareCircleAccess).where(CareCircleAccess.user_id == mother.id, CareCircleAccess.requester_id == caregiver.id)
+        )
+        if not existing_cca:
+            db.add(CareCircleAccess(user_id=mother.id, requester_id=caregiver.id, relationship_label="Caregiver", status="approved"))
 
         print(f"Verified demo users: Mother, Doctor, Caregiver, Admin (pwd: {demo_pwd})")
 

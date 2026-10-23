@@ -16,6 +16,7 @@ from app.schemas.auth import (
     UserRead,
 )
 from app.schemas.common import MessageResponse
+from app.core.security import UserRole
 from app.services.auth import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -28,7 +29,19 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=TokenPair)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
-    return await AuthService(db).login(payload.email, payload.password)
+    return await AuthService(db).login(
+        email=payload.email,
+        password=payload.password,
+        portal=payload.portal,
+        doctor_id=payload.doctor_id,
+        medical_license=payload.medical_license,
+        mother_id=payload.mother_id,
+    )
+
+
+@router.post("/admin/login", response_model=TokenPair)
+async def admin_login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+    return await AuthService(db).login(payload.email, payload.password, UserRole.ADMIN)
 
 
 @router.post("/refresh", response_model=TokenPair)

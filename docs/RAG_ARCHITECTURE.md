@@ -1,173 +1,200 @@
-# NurtureHer RAG Architecture
+# RAG Architecture
 
-> Evidence tiers used in this document: **verified-in-repo** (read from source during audits), **verified-via-git** (not applicable — single-commit history; working tree inspected instead), **previously-reported** (session history, not re-run here), **planned** (approved but not implemented). Nothing here claims clinical validation.
+> **Verified:** 2026-10-21 against the uncommitted working tree. **Authority:** current source and data artifacts. **Status:** corpus-backed retrieval is now part of the served chat path; this is an engineering integration, not clinical validation.
+>
+> Historical statements in older versions of this file said “RAG v2 is unwired” and “RAG v1 is the sole served path.” Those statements are obsolete. The original audit findings are retained in §8 with a historical label.
 
-## Table of contents
+## 1. Current Summary
 
-1. [RAG v1 — existing implementation](#31-rag-v1--existing-implementation)
-2. [RAG v2 — experimental implementation](#32-rag-v2--experimental-implementation)
-3. [Embedding models and retrieval](#33-embedding-models-and-retrieval)
-4. [Datasets and benchmark evaluation](#34-datasets-and-benchmark-evaluation)
-5. [RAG v1 versus RAG v2](#35-rag-v1-versus-rag-v2)
-6. [RAG v2 audit findings](#36-rag-v2-audit-findings)
-7. [RAG integration gap](#37-rag-integration-gap)
-8. [Approved design decisions](#38-approved-design-decisions)
-9. [Proposed remediation roadmap (NOT IMPLEMENTED)](#39-proposed-remediation-roadmap-not-implemented)
+NurtureHer serves a hybrid RAG path:
 
----
+- **Corpus-first:** MiniLM retrieval over the indexed medical corpus, threshold-gated and evidence-gated.
+- **v1 fallback:** the original eight-entry internal knowledge base is used when corpus evidence is unavailable, insufficient, or ambiguous.
+- **Gemini generation:** optional; a local templated fallback is used without an API key.
+- **Safety first:** urgent/crisis detection always precedes retrieval and generation.
+- **Deterministic triage:** the LLM never decides emergency status.
+- **Citation validation:** unknown/malformed markers are stripped and only retrieved IDs are resolved to source metadata.
 
-## 3.1 RAG v1 — existing implementation
+There is no standalone `app/rag_v2/pipeline.py`. The served orchestration lives in `app/services/corpus_evidence.py` and `app/services/chat_service.py`.
 
-**Status:** verified-in-repo; sole served RAG path. No production code imports `app/rag_v2/` (verified by grep during integration audit).
+No approval record for the v2-as-served integration was found in current documentation. Treat the integration as implemented but pending explicit review/approval, not as a clinically approved retrieval system.
 
-### Entry points and callers
+## 2. Component Map
 
-- HTTP entry: `POST /api/v1/chat/message`, `POST /api/v1/chat/voice`, `GET /api/v1/chat/history` in `app/api/routes/chat.py` (prefix `/chat`, JWT `get_current_user`, no role gate — any authenticated role may chat; identity comes from the token, never from request fields).
-- Service orchestrator: `ChatbotService.message()` in `app/services/chat_service.py` (aliased as `ChatService` in `app/services/health.py:59`).
-- Frontend caller: `frontend/src/pages/Coach.tsx` (`api.sendChat(text, language)`, `api.chatHistory()` in `frontend/src/lib/api.ts:214-215`); read-only history view in `SupportPages.tsx` (`ChatHistoryPage`).
+| Layer | File(s) | Responsibility |
+| --- | --- | --- |
+| HTTP | `app/api/routes/chat.py` | `/chat/message`, `/chat/voice`, `/chat/tts`, `/chat/history`; authentication required |
+| Orchestration | `app/services/chat_service.py` | Safety, language, intent routing, triage, retrieval selection, generation, citation validation, persistence, escalation |
+| Corpus bridge | `app/services/corpus_evidence.py` | Loads index, MiniLM query embedding, threshold retrieval, evidence gate, v1 fallback signal |
+| Corpus components | `app/rag_v2/embeddings.py`, `store.py`, `retrieve.py`, `evidence.py`, `citations.py` | Embedding adapter, cosine store, threshold table, evidence verdicts, citation validation |
+| v1 fallback | `app/rag/` | Eight internal English entries, MiniLM/FAISS-or-NumPy retrieval, prompt/context builders |
+| Citation sources | `app/services/citation_sources.py` | Resolve valid retrieved IDs to internal/corpus metadata |
+| Safety | `app/services/safety.py` | Urgent/crisis phrase matching and fixed templates |
+| Triage | `app/services/triage.py` | Deterministic ROUTINE / NEEDS_ATTENTION / URGENT classification |
+| Conversational routing | `app/services/conversation_router.py` | Narrow non-medical intent short circuit |
+| Translation | `app/services/translation_service.py`, `gemini_service.py` | Language normalization and best-effort English query translation |
+| Generation | `app/services/gemini_service.py` | Model fallback chain or local templated response |
+| Memory | `app/services/memory_service.py` | Redis chat memory, 20 messages, 1-hour TTL |
+| Escalation | `app/services/escalation.py` | High-risk case creation, cooldown, SMS/notification policy |
+| Ingestion | `scripts/ops/ingest_medical_corpus.py` | PDF extraction, provenance validation, chunking, embeddings, manifest |
+| Artifacts | `data/rag_index/` | `chunks.json`, `vectors.npy`, `manifest.json`, `quarantine.json` |
 
-### Request-to-response flow (verified)
+Import direction:
+
+```text
+chat_service
+  -> corpus_evidence -> rag_v2 (embeddings, store, retrieve, evidence)
+  -> rag (v1 fallback, prompt/context)
+  -> citation_sources -> rag (internal metadata) + corpus_evidence (corpus metadata)
+```
+
+`app/rag/` does not import `app/rag_v2/`. The bridge is a service-layer dependency, not a direct v1→v2 import.
+
+## 3. Served Flow
 
 ```mermaid
 flowchart TD
-    A[POST /chat/message] --> B[ChatbotService.message]
-    B --> C[Safety screen first]
-    C -->|hit| Z[Approved template + disclaimer, persisted]
-    C -->|clear| D[Language resolve]
-    D --> E[Gemini query translation if non-English]
-    E --> F[Retriever: embed, rank top-4, threshold filter]
-    F --> G{Evidence?}
-    G -->|empty/degraded| H[Uncertainty response + disclaimer]
-    G -->|cited IDs| I[Prompt build + Gemini generate]
-    I --> J[ensure_disclaimer + persist + Redis memory]
+    A[POST /chat/message] --> B[Safety gate]
+    B -->|urgent| C[Fixed safety template + persist]
+    C --> D[Best-effort escalation]
+    B -->|clear| E[Language detection/normalization]
+    E --> F{Conversational intent?}
+    F -->|yes| G[Localized conversational reply + persist]
+    G --> H{Distress?}
+    H -->|yes| I[Case-only escalation]
+    F -->|no| J[Translate query to English if needed]
+    J --> K[Deterministic triage]
+    K --> L[Corpus retrieve: MiniLM, 0.254, evidence gate]
+    L -->|SUFFICIENT| M[Corpus context + cited chunk IDs]
+    L -->|INSUFFICIENT/AMBIGUOUS/error| N[v1 KB fallback]
+    N -->|evidence| O[v1 context + cited IDs]
+    N -->|no evidence| P[Insufficient or ambiguity response]
+    M --> Q[Gemini or local fallback]
+    O --> Q
+    Q --> R[Citation validation + source resolution]
+    R --> S[Disclaimer + persist + Redis memory]
+    K -->|NEEDS_ATTENTION| T[Post-reply case-only escalation]
 ```
 
-1. **Safety first** (`app/services/safety.py:detect_urgent_symptoms`): self-harm and urgent-medical phrase lists (6 languages); on hit returns an approved template immediately, skipping retrieval/generation. Templates marked `REVIEW_STATUS="pending-clinical-review"`; crisis templates English-only by design.
-2. **Language resolve** (`app/services/translation_service.py`): Unicode-block + keyword detection (`detect_language`), allowlist normalization; Romanized input detects as `None` → falls back to request field/profile language.
-3. **Query translation** (`app/services/gemini_service.py:translate_to_english`, temp 0.0, 10s timeout): best-effort; any failure falls back to the original query with a log line (languages only, never query text).
-4. **Retrieval** (`app/rag/retriever.py:42` — `top_k=4, min_score=0.30` default): FAISS `IndexFlatIP` over L2-normalized MiniLM vectors (= cosine in [-1,1]); hash/NumPy fallback forced to no-evidence when degraded; diagnostics carry scores/counts/backend only.
-5. **Context** (`app/rag/context_builder.py`): retrieved lines as `- [<id>] <title>: <content>` plus per-user DB snapshot (name, language, age, pregnancy status, delivery date, location, latest mood/symptoms/cycle/PCOS risk+probability/PPD risk+EPDS). All queries filtered by `user_id` from JWT.
-6. **Prompt** (`app/rag/prompt_templates.py`): safety prompt (educational-only, no diagnosis/prescription, escalate to doctor/professional), `Respond in {language}` (covers `ml`), cite-only-retrieved-IDs rule, `ensure_disclaimer()` appends `It may make mistakes, so please take care.` idempotently; deterministic uncertainty builder for no-evidence.
-7. **Generation**: `GeminiService.generate_response` (temp 0.3, 512 tokens, 20s timeout, 4-model fallback chain) or regex-based templated `_fallback_response` with real `[source:<id>]` markers only.
-8. **Persist**: `ChatRepository.create` + commit; Redis `chat-memory:{user_id}` (20 turns, 1h TTL, fail-open).
+Urgent safety detection happens before language resolution so a crisis phrase is never delayed by translation. Escalation is best-effort after the reply is persisted and cannot change the urgent template.
 
-### Modules (`app/rag/`, 9 files)
+## 4. Corpus Path
 
-| File | Responsibility |
-|---|---|
-| `__init__.py` | Re-exports builder + retriever |
-| `knowledge_base.py` | 8 hardcoded English entries with stable IDs; each carries `source="NurtureHer internal knowledge entry (unverified — pending clinical review)"` |
-| `document_loader.py` | Maps entries to `Document` with id/category/title/language/source metadata |
-| `documents.py` | `Document` dataclass (langchain import with local fallback) |
-| `embedding.py` | `all-MiniLM-L6-v2`, 384-d, normalized; `is_degraded` flag on load failure |
-| `vector_store.py` | FAISS `IndexFlatIP` + NumPy fallback; `backend` name reporting |
-| `retriever.py` | `RetrievalDiagnostics`, `RetrievalResult` (`cited_ids`, `has_evidence`), `ThresholdTable`, `MissingThresholdError`, `Retriever` |
-| `context_builder.py` | Retrieval formatting + user snapshot; exposes `last_diagnostics`, `cited_ids` |
-| `prompt_templates.py` | `LANGUAGE_NAMES` (incl. `ml`), disclaimer helper, safety prompt, builders |
+### Retrieval
 
-### Error handling and fallbacks
-Missing API key → templated fallback; translation failure → original query; degraded embeddings → no-evidence path; Redis failure → empty history, flow continues; all safe paths still append the disclaimer. No exception escapes `message()` for these degradations (verified-in-repo).
+- Index artifacts: 1,167 chunks from 5 eligible documents; 6 documents total with 1 quarantined.
+- Embedding: `sentence-transformers/all-MiniLM-L6-v2`, 384 dimensions.
+- Similarity: normalized cosine similarity via `CosineStore`.
+- Candidate count: top 4.
+- Minimum score: `0.254` from the manifest default; fallback to `app/rag_v2/thresholds.json`.
+- Evidence gate: `EvidenceGate(min_score=threshold, ambiguity_margin=0.05)`.
+- Sufficient evidence: cited IDs and formatted context are passed to generation.
+- Ambiguity: top contenders from different topics within the margin produce AMBIGUOUS; the caller falls back to v1.
+- Unavailable index: `CorpusUnavailableError`, treated as no corpus evidence.
 
-### Tests (v1 chat)
-`tests/test_chat_safety.py` (detection 6 langs, precedence, emergency bypass), `tests/test_chat_pipeline.py` (disclaimer, citations, evidence gating, translation fallback, isolation), `tests/test_chat_eval.py` (offline eval incl. retrieval relevance/refusal/crisis/language), `tests/test_chat_eval_live.py` (double-gated skip — never runs without approval).
+Topic identity for ambiguity favors chunk section, then the document's first topic, then the document ID.
 
-### Known limitations
-8 English-only docs; Romanized queries unhandled; ta/te/ml browser speech maps to en-IN; no threads/sessions (single per-user stream); sentiment lexicon English-only; voice endpoints are mock stubs (deferred).
+### Corpus limits
 
----
+- Source `review_status: approved` means approved for indexing, not clinically approved for chatbot use.
+- PCOS coverage is thin; maternal sleep has a known evidence gap.
+- Multilingual retrieval is uneven; non-English benchmark labels are largely provisional.
+- Retrieval relevance does not establish factual or clinical correctness.
+- The corpus/index directory is outside Git and Docker build context unless explicitly packaged.
 
-## 3.2 RAG v2 — experimental implementation
+## 5. v1 Fallback
 
-**Status:** verified-in-repo as isolated, unwired code. `app/rag_v2/` is imported only by its own tests and `scripts/ops/*`; zero imports to/from `app/rag/` or production paths (verified by grep).
+The v1 path remains in `app/rag/`:
 
-| File | Responsibility (verified) |
-|---|---|
-| `schemas.py` | `SourceProvenance` (publisher, url-or-path, dates, `pending\|approved`), `MedicalDocument`, `Chunk`, `ValidationIssue/Result`, deterministic `CorpusManifest.to_text()` |
-| `ingest.py` | `clean_text`, `record_language` (metadata only), sliding-window `chunk_text`, `validate_document` (quarantines missing id/title/body, unsupported language, missing/incomplete provenance, non-approved status), `validate_corpus` → eligible + quarantined + manifest |
-| `embeddings.py` | `EmbeddingBackend` (pinned `revision`, load-time, dimension check); `ModelUnavailableError` on any load failure — never substitutes; `minilm_backend()`, `mpnet_backend(model_path?)` |
-| `store.py` | `CosineStore`: brute-force cosine over normalized vectors; validates 2-D numeric shape, non-zero vectors, query dims; `rank()` returns `(id, score)` best-first |
-| `retrieve.py` | `ThresholdTable` (fail-closed `MissingThresholdError`), `Retriever` (top-k + threshold + optional category scope), `RetrievalDiagnostics/Result` |
-| `evidence.py` | `EvidenceGate.decide()` → `SUFFICIENT/INSUFFICIENT/AMBIGUOUS`; ambiguity = competing *topics* within margin (default 0.05); clarification question carries no medical content |
-| `citations.py` | `validate()` — single-pass regex; keeps valid markers, strips unknown/malformed, dedupes report; `text_grounding_established` always `False` |
-| `benchmark.py` | `BenchmarkBackend` protocol, `SyntheticBackend`, `run_benchmark` (latency/tracemalloc), strict `recall_at_k` (ties don't count), `mrr()`, `recall_by_language()` |
-| `cases.py` | 44 `LabeledCase`s; EN established (`provisional=False`), all non-English/Romanized `provisional=True` |
-| `thresholds.json` | `{"minilm": {"default": 0.254, ...}, "mpnet": {"default": 0.35, ...}}`, `per_category: {}` |
-| `scripts/ops/run_rag_v2_benchmark.py` | Local-only comparison runner → `docs/rag_v2_benchmark_report.{md,json}` |
-| `scripts/ops/calibrate_rag_v2_thresholds.py` | Offline scorer → `thresholds.json` + `docs/rag_v2_thresholds.md` |
+- Eight hardcoded English knowledge entries with IDs such as `safety_urgent_001` and `cycle_tracking_001`.
+- Each entry says it is unverified and pending clinical review.
+- MiniLM embeddings; FAISS `IndexFlatIP` with NumPy fallback.
+- `top_k=4`, minimum score `0.30`.
+- Degraded embedding/vector store is treated as no evidence.
+- Used whenever corpus retrieval is unavailable, insufficient, ambiguous, or raises.
 
-Current limitations: no orchestrator (see §3.7); no production index builder; MPNet loads from a machine-local manual dir on hosts without hub symlink privileges (recorded in report).
+The v1 path is not a separate final answer authority. It is a fallback and is explicitly marked unverified.
 
-## 3.3 Embedding models and retrieval
+## 6. Generation, Citations, and Sources
 
-| | MiniLM (v1 baseline) | MPNet (v2 candidate, NOT served) |
-|---|---|---|
-| Identifier | `sentence-transformers/all-MiniLM-L6-v2` | `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` |
-| Revision | `1110a243fdf4706b3f48f1d95db1a4f5529b4d41` (previously reported, in benchmark report) | `4328cf26390c98c5e3c738b4460a05b95f4911f5` (previously reported) |
-| Dimension | 384 | 768 |
-| Normalization | L2-normalized, cosine in [-1,1] | Same contract enforced (`CosineStore` re-normalizes) |
-| Loading | Cached HF weights; `is_degraded` on failure | Pinned revision; `ModelUnavailableError` on failure (no hash fallback) |
-| Downloads | At setup (cached) | One-time approved download; runtime never downloads |
-| Threshold source | v1 default 0.30 | Generated `thresholds.json` (0.254 / 0.35) |
-| Degraded behavior | Hash fallback forced to no-evidence | Hard failure, reported clearly |
+- Gemini: configured model first, then a fallback chain; temperature 0.3; max 512 tokens; 20-second timeout.
+- `gemini-3.6-flash` and several legacy names are normalized to `gemini-3.5-flash-lite` in code.
+- Without a key, `_fallback_response()` creates a templated answer from retrieved context. It uses the same source markers but is not live model output.
+- The prompt instructs the model to use only cited IDs and educational, non-diagnostic language.
+- `validate_citations()` strips unknown/malformed source markers and deduplicates the report. When any markers are stripped, the cleaned text is persisted.
+- Citation validation checks whether IDs were retrieved; it does not prove that prose is grounded in the cited passage. `text_grounding_established` remains false.
+- `resolve_citation_sources()` resolves only IDs present in the validated response and retrieved set:
+  - internal v1 entries → internal metadata;
+  - corpus chunk IDs → title, page, section, publisher, publication date from the index.
+- Unknown/unindexed IDs are omitted rather than assigned guessed metadata.
 
-Capabilities vs results are separated below; numbers are previously reported, not re-measured in this task.
+## 7. Safety, Triage, and Escalation
 
-## 3.4 Datasets and benchmark evaluation
+### Safety
 
-- **Corpus:** the 8 v1 KB entries (stable IDs `safety_urgent_001` … `cycle_tracking_001`); no new medical content created.
-- **Labels:** 44 cases in `cases.py` — 6 established EN, 34 provisional non-English/Romanized, 4 irrelevant controls. Provisional labels are explicitly unreviewed; metrics computed on them are reported separately.
-- **Metrics implemented:** strict `recall@{1,4}`, `mrr()`, `recall_by_language()`, latency median/p95, tracemalloc peak KB, load ms.
-- **Previously reported results** (historical — thresholds.json values re-verified present, scores not re-run here): MiniLM recall@1/4 ≈ 0.182, MRR ≈ 0.398; MPNet recall@1/4 ≈ 0.636, MRR ≈ 0.804; per-language tables in `docs/rag_v2_benchmark_report.md`; calibration cutoffs 0.254/0.35 from clean gaps ([0.073,0.435] / [0.149,0.551]), 6 relevant + 4 irrelevant samples each.
-- **Limitations:** tiny sample; provisional labels; topical-relevance only; CPU timings machine-specific; tracemalloc misses native torch allocations. Retrieval scores do not establish factual correctness, safety, or clinical validation.
+- `safety-templates-v1`, `pending-clinical-review`.
+- Self-harm is checked before urgent medical.
+- Phrase lists cover six languages but are initial drafts.
+- Crisis templates are English-only by design.
+- Substring matching has no negation handling; a denial can still trigger.
+- On a hit: fixed template, persist, then best-effort escalation.
 
-## 3.5 RAG v1 versus RAG v2
+### Triage
 
-| | v1 (`app/rag/`) | v2 (`app/rag_v2/`) |
-|---|---|---|
-| Purpose | Served production chatbot path | Experimental, offline-evaluated successor |
-| Maturity | Working end-to-end (safety→retrieve→generate→persist) | Components only; no orchestrator |
-| Callers | Chat routes/services, eval scripts | Tests + ops scripts only (verified: no production imports) |
-| Embeddings | MiniLM served; degraded→no-evidence | MiniLM + MPNet adapters; missing model raises |
-| Safeguards | Threshold + uncertainty + disclaimer + citations-in-prompt | + evidence gate, citation validator, provenance gating |
-| Testing | Safety/pipeline/eval/live-gated suites | Ingest/retrieval/evidence/citations/benchmark suites |
-| Limits | EN-only KB, no threads, mock voice | Unwired; provisional labels; pending review |
-| Production status | **Served** | **Not served; must stay isolated until approved** |
+- `chat-triage-v1`, `pending-clinical-review`.
+- URGENT delegates to the safety phrase lists.
+- NEEDS_ATTENTION matches conservative distress phrases; opens a moderate case without notifications.
+- ROUTINE does not escalate.
+- Triage is separate from retrieval relevance.
 
-Integration audit finding (verified, stands): no production code, route, service, or script chains v2 stages together; components exercised independently; `app/rag/` imports nothing from v2 and vice versa. No discrepancy found on re-verification of import graphs.
+### Escalation
 
-## 3.6 RAG v2 audit findings (preserved)
+- Doctor recipient: active `DoctorPatient` link.
+- Caregiver recipients: approved CareCircle access with emergency or risk sharing.
+- 24-hour cooldown reuses an open `chat_triage` case.
+- NEEDS_ATTENTION is case-only; URGENT queues notifications.
+- SMS text can include the mother's name and up to 500 characters of the trigger excerpt. Treat it as sensitive.
+- Missing doctor/phone is recorded explicitly, not silently dropped.
+- Provider behavior: simulated without credentials in non-production; fail-closed in production; real delivery requires worker/beat.
 
-### `retrieve.py`
-Missing backend → `MissingThresholdError` (tested); missing default → same (untested); malformed entries → `MissingThresholdError` *or* raw `TypeError` for non-dict `per_category` (untested); non-numeric → raw `ValueError`/`TypeError` escape (untested); NaN → silent total filtering (untested); `+inf` → empty, **`-inf`/below-`-1` → filtering disabled, fail-open** (untested); out-of-range `[−1,1]` unchecked (generated-file shape only); per-category values unreachable from `retrieve()` (calls `get(name)` without category — verified); missing regression tests for all of the above.
+## 8. Historical Audit Findings (Preserved)
 
-### `store.py`
-Shape check is tautological for the dimension axis; 1-D/0-d inputs raise raw `IndexError`, non-numeric dtype raw `TypeError` (both untested); ±inf vectors pass validation then poison the store with NaN (untested); NaN docs rejected incidentally, NaN/inf queries propagate NaN scores silently (untested); `k=0`/negative → `[]` (benign, untested), non-integer `k` → `TypeError` (untested). Covered: zero vectors, row-count mismatch, query dim mismatch, zero-norm query, ordering, `k>n` (`test_cosine_score_semantics`, `test_ranking_order_and_k`, `test_store_rejects_bad_inputs` in `tests/test_rag_v2_retrieval.py`).
+The following findings were recorded in an earlier v2 audit. Some were subsequently remediated in the working tree; they are retained as historical evidence and must be rechecked before being treated as current defects.
 
-### `evidence.py`
-Empty → INSUFFICIENT (tested: `test_evidence_empty_result_is_insufficient`); clear winner → SUFFICIENT, 2-topic tie → AMBIGUOUS, same-topic tie → SUFFICIENT (tested: `test_evidence_sufficient_clear_winner`, `test_evidence_ambiguous_competing_topics`, `test_evidence_same_topic_near_tie_is_sufficient`, `test_clarification_with_topic_labels`); **no absolute-score floor** — weak/NaN scores can yield SUFFICIENT (untested); no finiteness checks (untested); margin unvalidated — negative/NaN margin disables ambiguity, string margin raises `TypeError` (untested); ordering assumed not verified (untested); unknown topics silently ignored (untested); 3+-topic truncation to 2 (untested).
+- **Threshold validation:** malformed/missing thresholds could raise raw `TypeError`/`ValueError`; NaN/infinite values had untested behavior.
+- **Store validation:** shape checks were weak for some dimension/1-D cases; NaN/inf query vectors could propagate; `k` type/range handling was not uniformly validated.
+- **Evidence gate:** the original gate had no absolute score floor; weak scores could be treated as sufficient. The current gate accepts `min_score`, and the corpus bridge supplies the calibrated threshold.
+- **Citation parsing:** an unclosed `[source:` could consume the rest of the text; malformed spans could consume neighboring prose; near-miss marker variants were untested.
+- **Isolation:** v2 originally had no orchestrator and no production imports; components were exercised only by tests/scripts.
+- **Approval:** a proposed “keep v2 isolated until separately approved” decision was recorded. The current working tree integrates v2 components into the served corpus path through `corpus_evidence.py`; no matching approval artifact was found in the current docs.
+- **Fallback:** v1 was the only served path during the audit. It is now the fallback.
 
-### `citations.py`
-Valid/fabricated/duplicate/empty markers handled and tested (`test_valid_markers_pass_through`, `test_fabricated_ids_stripped_prose_preserved`, `test_malformed_markers_stripped`, `test_empty_and_markerless_text`, `test_duplicate_valid_markers_kept_with_deduped_report` — all in `tests/test_rag_v2_citations.py`); **unclosed `[source:` deletes to end-of-string**; malformed spans consume neighboring prose (acknowledged in-test); near-miss variants (`[source :x]`, `[Sources:x]`) pass through; `None` inputs raise `TypeError` (all untested).
+Historical benchmark figures (MiniLM/MPNet, recall, latency, provisional labels) remain in [`rag_v2_benchmark_report.md`](./rag_v2_benchmark_report.md) and [`rag_v2_thresholds.md`](./rag_v2_thresholds.md). They are dated evidence, not current production measurements.
 
-Each finding classified: code-inspected behavior, with test names where covered; unexecuted edge cases marked untested, not assumed.
+## 9. Evaluation Status
 
-## 3.7 RAG integration gap
-No orchestrator exists — the intended `pipeline.py` (embed → threshold-gated retrieve → evidence gate → SUFFICIENT/INSUFFICIENT/AMBIGUOUS handling → citation validation → structured outcome) is **a proposal, not implemented**. Until it exists, verdicts have no consumer and stripped-citation outcomes have no handler. A sufficient verdict must never be read as factual/clinical grounding.
+- Corpus construction and manifest: verified from current artifacts (6 documents, 5 eligible, 1 quarantined, 1,167 chunks, 98 bibliography chunks dropped, 384-d, 0.254).
+- Targeted tests: previously reported 70 passed (RAG/safety/privacy subset); not rerun in this documentation pass.
+- Full suite, live Gemini, and complete multilingual evaluation: unverified.
+- Clinical/native review: pending.
+- No clinical validation, diagnostic accuracy, or safety certification is claimed.
 
-## 3.8 Approved design decisions (user-approved, preserved)
-1. Unclosed `[source:` strips only the opener, prose preserved.
-2. Evidence gate enforces a minimum-score floor (not ranking alone).
-3. Floor respects backend-specific calibration; no universal threshold; calibrated values unchanged without evaluation evidence.
-4. RAG v2 stays experimental and isolated from v1/production until separately approved.
-5. No remediation implementation approved yet (as of this writing).
+## 10. Architectural Boundaries
 
-Open questions: clarification-copy sign-off (UX, not clinical); per-category thresholds if gaps diverge; transliteration strategy for Romanized queries.
+1. Source code and artifacts are authoritative; this file is not a substitute for reading them.
+2. Corpus evidence is bounded by the indexed sources and retrieval threshold.
+3. A citation is traceability metadata, not proof of clinical correctness.
+4. A SUFFICIENT verdict is a retrieval decision, not a medical judgment.
+5. Safety and triage rules are deterministic drafts pending review.
+6. Do not change thresholds, safety phrases, or corpus content as an unreviewed hotfix.
+7. Do not claim that the v1 fallback is clinically reviewed.
+8. Do not expose trigger excerpts, patient data, or SMS bodies in documentation or logs.
 
-## 3.9 Proposed remediation roadmap (NOT IMPLEMENTED)
-- **Phase A** — threshold config validation (`retrieve.py` + tests): finite/range/type checks, `MissingThresholdError` everywhere invalid.
-- **Phase B** — store/query validation (`store.py` + tests): ndim/dtype/finiteness checks, integer `k` validation.
-- **Phase C** — evidence-gate hardening (`evidence.py` + tests): finiteness gate, score floor, margin validation, order-normalization, unknown-topic policy.
-- **Phase D** — citation parsing (`citations.py` + tests): opener-only unclosed handling, near-miss policy, `None` handling.
-- **Phase E** — `pipeline.py` + integration tests wiring retrieve→gate→validate with explicit verdict handling.
-- **Phase F** — full suite + coverage gate + Ruff + v1-isolation proof (import-graph grep both directions).
-Each phase requires: files, behavior, regression tests, acceptance criteria, risks — none started.
+## 11. Related Documents
+
+- [`RAG_RUNBOOK.md`](./RAG_RUNBOOK.md)
+- [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md)
+- [`AUTH_AND_RBAC.md`](./AUTH_AND_RBAC.md)
+- [`corpus_eval_report.md`](./corpus_eval_report.md)
+- [`rag_v2_benchmark_report.md`](./rag_v2_benchmark_report.md)
+- [`rag_v2_thresholds.md`](./rag_v2_thresholds.md)

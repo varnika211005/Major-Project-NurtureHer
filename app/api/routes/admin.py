@@ -1,3 +1,4 @@
+import json
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -61,7 +62,7 @@ async def list_users(
 async def update_user(
     user_id: UUID,
     payload: AdminUserUpdate,
-    _: User = admin_user,
+    admin: User = admin_user,
     db: AsyncSession = Depends(get_db),
 ):
     user = await db.get(User, user_id)
@@ -70,8 +71,17 @@ async def update_user(
         from fastapi import status
 
         raise AppError("User not found", status.HTTP_404_NOT_FOUND)
-    for key, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    for key, value in changes.items():
         setattr(user, key, value)
+    db.add(
+        AuditLog(
+            user_id=admin.id,
+            action="admin.user.update",
+            resource=f"user:{user_id}",
+            metadata_json=json.dumps({"fields": sorted(changes)}),
+        )
+    )
     await db.commit()
     await db.refresh(user)
     return user

@@ -2,6 +2,7 @@ import { Check, Copy, Download, KeyRound, Lock, QrCode, RefreshCw, ShieldCheck, 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { api, CareCircleRequestItem } from "@/lib/api";
+import { formatDate } from "@/lib/locale";
 import { useAuth } from "@/context/useAuth";
 import { Page } from "@/components/common/Page";
 import { SectionHeader } from "@/components/common/Premium";
@@ -419,7 +420,7 @@ export function CareCircleQRPage() {
                           </span>
                         </div>
                         <p className="mt-1 text-xs text-muted">
-                          {req.requester_email} · Requested on {new Date(req.requested_at).toLocaleDateString()}
+                          {req.requester_email} · Requested on {formatDate(req.requested_at)}
                         </p>
                       </div>
 

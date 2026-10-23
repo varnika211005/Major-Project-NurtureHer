@@ -7,6 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import "@/index.css";
+import "@/pwa";
 
 const queryClient = new QueryClient({
   defaultOptions: {

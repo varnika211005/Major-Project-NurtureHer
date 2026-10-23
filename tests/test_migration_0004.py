@@ -45,7 +45,7 @@ def test_revision_chain_integrity():
     cfg = Config("alembic.ini")
     script = ScriptDirectory.from_config(cfg)
     revisions = {rev.revision: rev for rev in script.walk_revisions()}
-    assert tuple(script.get_heads()) == ("0005_role_specific_nutrition",)
+    assert tuple(script.get_heads()) == ("0011_edu_series_verified",)
     assert revisions["0005_role_specific_nutrition"].down_revision == REVISION_ID
     assert revisions[REVISION_ID].down_revision == "0003_deactivate_asha_role"
     assert revisions["0003_deactivate_asha_role"].down_revision == "0002_production_indexes"

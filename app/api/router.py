@@ -8,6 +8,7 @@ from app.api.routes import (
     chat,
     cycle,
     doctor,
+    education,
     herreach,
     notifications,
     nutrition,
@@ -30,3 +31,4 @@ api_router.include_router(herreach.router)
 api_router.include_router(nutrition.router)
 api_router.include_router(admin.router)
 api_router.include_router(notifications.router)
+api_router.include_router(education.router)

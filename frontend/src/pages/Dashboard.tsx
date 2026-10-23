@@ -123,7 +123,7 @@ export function Dashboard() {
   return (
     <div className="space-y-7">
       {/* Medical Non-diagnostic Disclaimer */}
-      <div className="flex items-center gap-2 rounded-2xl border border-lavender-200 bg-lavender-50/70 px-4 py-2.5 text-xs text-lavender-900 dark:border-lavender-800/40 dark:bg-lavender-950/40 dark:text-lavender-200">
+      <div className="flex items-center gap-2 rounded-2xl border border-lavender-200 bg-lavender-50/70 px-4 py-2.5 text-xs text-lavender-900">
         <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
         <span className="font-semibold">Clinical Decision Support:</span>
         <span className="truncate">NurtureHer AI provides screening insights, not medical diagnoses. Consult a licensed healthcare provider for clinical evaluation.</span>
@@ -131,23 +131,23 @@ export function Dashboard() {
 
       {/* Hero Welcome & Today's Status */}
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <Card className="overflow-hidden border-lavender-100 bg-gradient-to-br from-white via-lavender-50/40 to-purple-50/30 p-6 md:p-8 dark:border-white/10 dark:from-card dark:to-card/80">
+        <Card className="overflow-hidden border-lavender-100 bg-gradient-to-br from-surface via-lavender-50/40 to-lavender-100/40 p-6 md:p-8">
           <Badge>{t.dashboard.badge}</Badge>
-          <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight text-ink dark:text-white md:text-5xl">
+          <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight text-ink md:text-5xl">
             {t.dashboard.heading}
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted dark:text-white/65">
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted">
             {t.dashboard.subheading}
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <div className="rounded-2xl border border-lavender-100 bg-white/90 px-4 py-2.5 text-xs font-black text-ink shadow-xs dark:border-white/10 dark:bg-white/10 dark:text-white">
+            <div className="rounded-2xl border border-lavender-100 bg-surface/90 px-4 py-2.5 text-xs font-black text-ink shadow-xs">
               {t.dashboard.moodLabel}: <span className="capitalize text-primary">{moodDisplay}</span>
             </div>
-            <div className="rounded-2xl border border-lavender-100 bg-white/90 px-4 py-2.5 text-xs font-black text-ink shadow-xs dark:border-white/10 dark:bg-white/10 dark:text-white">
-              {t.dashboard.symptomsLabel}: <span className="text-secondary">{symptomCount} active</span>
+            <div className="rounded-2xl border border-lavender-100 bg-surface/90 px-4 py-2.5 text-xs font-black text-ink shadow-xs">
+              {t.dashboard.symptomsLabel}: <span className="text-lavender-700 dark:text-lavender-300">{symptomCount} active</span>
             </div>
-            <div className="rounded-2xl border border-lavender-100 bg-white/90 px-4 py-2.5 text-xs font-black text-ink shadow-xs dark:border-white/10 dark:bg-white/10 dark:text-white">
+            <div className="rounded-2xl border border-lavender-100 bg-surface/90 px-4 py-2.5 text-xs font-black text-ink shadow-xs">
               {t.dashboard.cycleLabel}: <span className="text-primary">{stats.cycle_prediction ?? t.common.notTracked}</span>
             </div>
             <Button
@@ -168,16 +168,16 @@ export function Dashboard() {
         <div className="space-y-4">
           <Card className="border-lavender-100 p-5">
             <SectionHeader title={t.dashboard.latestSignalsTitle} subtitle={t.dashboard.latestSignalsSubtitle} />
-            <div className="mt-3 space-y-2.5 text-xs font-bold text-muted dark:text-white/65">
+            <div className="mt-3 space-y-2.5 text-xs font-bold text-muted">
               <p className="flex items-center gap-2">
                 <CalendarHeart className="h-4 w-4 text-primary" />
                 <span>{t.dashboard.nextCycleEstimate}:</span>
-                <span className="text-ink dark:text-white">{stats.cycle_prediction ?? t.common.notAvailable}</span>
+                <span className="text-ink">{stats.cycle_prediction ?? t.common.notAvailable}</span>
               </p>
               <p className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-secondary" />
                 <span>{t.dashboard.moodLabel}:</span>
-                <span className="capitalize text-ink dark:text-white">{moodDisplay}</span>
+                <span className="capitalize text-ink">{moodDisplay}</span>
               </p>
             </div>
           </Card>
@@ -189,7 +189,7 @@ export function Dashboard() {
               </div>
               <div>
                 <p className="text-xs font-black text-rose-700 dark:text-rose-300">{t.dashboard.emergencyTitle}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-muted dark:text-white/60">
+                <p className="mt-1 text-[11px] leading-relaxed text-muted">
                   {t.dashboard.emergencyDesc}
                 </p>
               </div>
@@ -239,8 +239,8 @@ export function Dashboard() {
       <section>
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-black text-ink dark:text-white">Care Suite & Tools</h2>
-            <p className="text-xs text-muted dark:text-white/60">Comprehensive AI health tools designed for antenatal, postpartum, and gynecological wellbeing.</p>
+            <h2 className="text-lg font-black text-ink">Care Suite & Tools</h2>
+            <p className="text-xs text-muted">Comprehensive AI health tools designed for antenatal, postpartum, and gynecological wellbeing.</p>
           </div>
         </div>
 
@@ -248,13 +248,13 @@ export function Dashboard() {
           {/* Card 1: Clinical Screenings */}
           <div
             onClick={() => navigate("/pcos")}
-            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-white/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft dark:border-white/10 dark:bg-card"
+            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-surface/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender-100 text-primary transition group-hover:bg-primary group-hover:text-white dark:bg-white/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender-100 text-primary transition group-hover:bg-primary group-hover:text-onbrand">
               <HeartPulse className="h-5 w-5" />
             </div>
-            <h3 className="mt-3 text-xs font-black text-ink dark:text-white">PCOS Screening</h3>
-            <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">Explainable AI biomarker risk prediction.</p>
+            <h3 className="mt-3 text-xs font-black text-ink">PCOS Screening</h3>
+            <p className="mt-1 text-[11px] leading-4 text-muted">Explainable AI biomarker risk prediction.</p>
             <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
               Screen now <ChevronRight className="ml-0.5 h-3 w-3" />
             </span>
@@ -263,13 +263,13 @@ export function Dashboard() {
           {/* Card 2: PPD Assessment */}
           <div
             onClick={() => navigate("/ppd")}
-            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-white/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft dark:border-white/10 dark:bg-card"
+            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-surface/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 transition group-hover:bg-purple-600 group-hover:text-white dark:bg-white/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 transition group-hover:bg-purple-600 group-hover:text-white">
               <ShieldAlert className="h-5 w-5" />
             </div>
-            <h3 className="mt-3 text-xs font-black text-ink dark:text-white">PPD Detection</h3>
-            <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">EPDS score and sentiment analysis.</p>
+            <h3 className="mt-3 text-xs font-black text-ink">PPD Detection</h3>
+            <p className="mt-1 text-[11px] leading-4 text-muted">EPDS score and sentiment analysis.</p>
             <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
               Take assessment <ChevronRight className="ml-0.5 h-3 w-3" />
             </span>
@@ -278,13 +278,13 @@ export function Dashboard() {
           {/* Card 4: CareCircle QR Vault */}
           <div
             onClick={() => navigate("/carecircle")}
-            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-white/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft dark:border-white/10 dark:bg-card"
+            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-surface/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white dark:bg-white/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white">
               <QrCode className="h-5 w-5" />
             </div>
-            <h3 className="mt-3 text-xs font-black text-ink dark:text-white">CareCircle QR</h3>
-            <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">Zero-data QR consent vault.</p>
+            <h3 className="mt-3 text-xs font-black text-ink">CareCircle QR</h3>
+            <p className="mt-1 text-[11px] leading-4 text-muted">Zero-data QR consent vault.</p>
             <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
               Manage vault <ChevronRight className="ml-0.5 h-3 w-3" />
             </span>
@@ -293,13 +293,13 @@ export function Dashboard() {
           {/* Card 5: Nutrition Guide */}
           <div
             onClick={() => navigate("/nutrition")}
-            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-white/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft dark:border-white/10 dark:bg-card"
+            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-surface/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 transition group-hover:bg-amber-600 group-hover:text-white dark:bg-white/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-warning/15 text-orange-700 transition group-hover:bg-warning/25">
               <Utensils className="h-5 w-5" />
             </div>
-            <h3 className="mt-3 text-xs font-black text-ink dark:text-white">Nutrition & Water</h3>
-            <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">Cultural diets & 8-cup hydration.</p>
+            <h3 className="mt-3 text-xs font-black text-ink">Nutrition & Water</h3>
+            <p className="mt-1 text-[11px] leading-4 text-muted">Cultural diets & 8-cup hydration.</p>
             <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
               Open guide <ChevronRight className="ml-0.5 h-3 w-3" />
             </span>
@@ -308,13 +308,13 @@ export function Dashboard() {
           {/* Card 6: Reports Zone */}
           <div
             onClick={() => navigate("/reports")}
-            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-white/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft dark:border-white/10 dark:bg-card"
+            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-surface/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender-100 text-primary transition group-hover:bg-primary group-hover:text-white dark:bg-white/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender-100 text-primary transition group-hover:bg-primary group-hover:text-onbrand">
               <BarChart3 className="h-5 w-5" />
             </div>
-            <h3 className="mt-3 text-xs font-black text-ink dark:text-white">Reports Zone</h3>
-            <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">Printable PDF & CSV export.</p>
+            <h3 className="mt-3 text-xs font-black text-ink">Reports Zone</h3>
+            <p className="mt-1 text-[11px] leading-4 text-muted">Printable PDF & CSV export.</p>
             <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
               View reports <ChevronRight className="ml-0.5 h-3 w-3" />
             </span>
@@ -324,13 +324,13 @@ export function Dashboard() {
           <div
             id="mother-dashboard-herreach-card"
             onClick={() => navigate("/herreach")}
-            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-white/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft dark:border-white/10 dark:bg-card"
+            className="group cursor-pointer rounded-2xl border border-lavender-100 bg-surface/90 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-soft"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender-100 text-primary transition group-hover:bg-primary group-hover:text-white dark:bg-white/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-lavender-100 text-primary transition group-hover:bg-primary group-hover:text-onbrand">
               <Compass className="h-5 w-5" />
             </div>
-            <h3 className="mt-3 text-xs font-black text-ink dark:text-white">HerReach Discovery</h3>
-            <p className="mt-1 text-[11px] leading-4 text-muted dark:text-white/50">Smart nearby facilities & care finder.</p>
+            <h3 className="mt-3 text-xs font-black text-ink">HerReach Discovery</h3>
+            <p className="mt-1 text-[11px] leading-4 text-muted">Smart nearby facilities & care finder.</p>
             <span className="mt-2.5 inline-flex items-center text-[10px] font-bold text-primary group-hover:underline">
               Find facilities <ChevronRight className="ml-0.5 h-3 w-3" />
             </span>
@@ -342,13 +342,13 @@ export function Dashboard() {
       <DialogPrimitive.Root open={showSymptomModal} onOpenChange={setShowSymptomModal}>
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-sm transition-opacity" />
-          <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-lavender-200 bg-white/95 p-6 shadow-glow backdrop-blur-xl outline-none dark:border-white/10 dark:bg-[#1F1326]/95">
+          <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-lavender-200 bg-surface/95 p-6 shadow-glow backdrop-blur-xl outline-none">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <DialogPrimitive.Title className="text-lg font-black text-ink dark:text-white">
+                <DialogPrimitive.Title className="text-lg font-black text-ink">
                   Log Today's Symptoms
                 </DialogPrimitive.Title>
-                <DialogPrimitive.Description className="mt-1 text-xs leading-5 text-muted dark:text-white/60">
+                <DialogPrimitive.Description className="mt-1 text-xs leading-5 text-muted">
                   Select any symptoms you are experiencing today to keep your care team informed.
                 </DialogPrimitive.Description>
               </div>
@@ -373,22 +373,22 @@ export function Dashboard() {
                     }}
                     className={`flex w-full items-center justify-between rounded-2xl border p-3 text-left transition-all ${
                       isSelected
-                        ? "border-primary bg-primary/10 text-primary shadow-xs dark:bg-primary/20"
-                        : "border-lavender-100 bg-lavender-50/40 text-ink hover:bg-lavender-100/60 dark:border-white/5 dark:bg-white/5 dark:text-white"
+                        ? "border-primary bg-primary/10 text-primary shadow-xs"
+                        : "border-lavender-100 bg-lavender-50/40 text-ink hover:bg-lavender-100/60"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-xl">{opt.emoji}</span>
                       <div>
                         <p className="text-xs font-black">{opt.label}</p>
-                        <p className="text-[11px] text-muted dark:text-white/50">{opt.description}</p>
+                        <p className="text-[11px] text-muted">{opt.description}</p>
                       </div>
                     </div>
                     <div
                       className={`flex h-5 w-5 items-center justify-center rounded-lg border transition-all ${
                         isSelected
-                          ? "border-primary bg-primary text-white"
-                          : "border-muted/30 bg-white/80 dark:border-white/20 dark:bg-white/10"
+                          ? "border-primary bg-primary text-onbrand"
+                          : "border-muted/30 bg-surface/80"
                       }`}
                     >
                       {isSelected ? <Check className="h-3 w-3" /> : null}

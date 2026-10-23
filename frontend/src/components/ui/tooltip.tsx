@@ -9,10 +9,10 @@ export function Tooltip({ children, content }: { children: ReactNode; content: s
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
             sideOffset={8}
-            className="z-50 rounded-xl bg-ink px-3 py-2 text-xs font-bold text-white shadow-card dark:bg-white dark:text-ink"
+            className="z-50 rounded-xl bg-ink px-3 py-2 text-xs font-bold text-onink shadow-card"
           >
             {content}
-            <TooltipPrimitive.Arrow className="fill-ink dark:fill-white" />
+            <TooltipPrimitive.Arrow className="fill-ink" />
           </TooltipPrimitive.Content>
         </TooltipPrimitive.Portal>
       </TooltipPrimitive.Root>

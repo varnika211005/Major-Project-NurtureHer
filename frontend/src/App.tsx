@@ -2,6 +2,7 @@ import { AnimatePresence } from "framer-motion";
 import { lazy, Suspense } from "react";
 import { Route, Routes, useLocation, Navigate } from "react-router-dom";
 import { LoadingSkeleton } from "@/components/common/States";
+import { RequireRole } from "@/components/auth/RequireRole";
 import { useAuth } from "@/context/useAuth";
 import { AuthPage } from "@/pages/AuthPages";
 import { AppShell } from "@/layout/AppShell";
@@ -28,6 +29,9 @@ const SettingsPage = lazy(() => import("@/pages/SupportPages").then((m) => ({ de
 const LogoutPage = lazy(() => import("@/pages/SupportPages").then((m) => ({ default: m.LogoutPage })));
 const NotFoundPage = lazy(() => import("@/pages/SupportPages").then((m) => ({ default: m.NotFoundPage })));
 const LandingPage = lazy(() => import("@/pages/landing/LandingPage"));
+const DemoPage = lazy(() => import("@/pages/DemoPage").then((m) => ({ default: m.DemoPage })));
+const DistrictAnalyticsPage = lazy(() => import("@/pages/DistrictAnalyticsPage").then((m) => ({ default: m.DistrictAnalyticsPage })));
+const EducationLibraryPage = lazy(() => import("@/pages/EducationLibraryPage").then((m) => ({ default: m.EducationLibraryPage })));
 
 export default function App() {
   const location = useLocation();
@@ -41,6 +45,10 @@ export default function App() {
           {/* Public landing page is the homepage for visitors */}
           <Route path="/login" element={<AuthPage initialMode="login" />} />
           <Route path="/register" element={<AuthPage initialMode="register" />} />
+          <Route path="/internal/admin/login" element={<AuthPage initialMode="login" adminOnly />} />
+          <Route path="/demo" element={<DemoPage />} />
+          <Route path="/library" element={<EducationLibraryPage />} />
+          <Route path="/offline-library" element={<EducationLibraryPage />} />
           <Route path="*" element={<LandingPage />} />
         </Routes>
       </Suspense>
@@ -63,24 +71,104 @@ export default function App() {
             <Route path="/" element={getHomeElement()} />
 
             {/* Role Dedicated Portals */}
-            <Route path="/doctor" element={<DoctorDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route
+              path="/doctor"
+              element={
+                <RequireRole roles={["doctor", "admin"]}>
+                  <DoctorDashboard />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <RequireRole roles={["admin"]}>
+                  <AdminDashboard />
+                </RequireRole>
+              }
+            />
 
             {/* Core Health & Care Tools */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/insights" element={<InsightsPage />} />
+            <Route
+              path="/dashboard"
+              element={
+                <RequireRole roles={["mother"]}>
+                  <Dashboard />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/insights"
+              element={
+                <RequireRole roles={["mother"]}>
+                  <InsightsPage />
+                </RequireRole>
+              }
+            />
             <Route path="/coach" element={<Coach />} />
             <Route path="/chat-history" element={<ChatHistoryPage />} />
-            <Route path="/cycle" element={<CyclePage />} />
-            <Route path="/pcos" element={<PCOSPage />} />
-            <Route path="/ppd" element={<PPDPage />} />
-            <Route path="/journal" element={<JournalPage />} />
+            <Route
+              path="/cycle"
+              element={
+                <RequireRole roles={["mother"]}>
+                  <CyclePage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/pcos"
+              element={
+                <RequireRole roles={["mother"]}>
+                  <PCOSPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/ppd"
+              element={
+                <RequireRole roles={["mother"]}>
+                  <PPDPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/journal"
+              element={
+                <RequireRole roles={["mother"]}>
+                  <JournalPage />
+                </RequireRole>
+              }
+            />
             <Route path="/nutrition" element={<NutritionPage />} />
-            <Route path="/carecircle" element={user.role === "mother" ? <CareCircleQR /> : <Navigate to="/" replace />} />
-            <Route path="/caregiver" element={user.role === "caregiver" ? <CaregiverPage /> : <Navigate to="/" replace />} />
+            <Route
+              path="/carecircle"
+              element={
+                <RequireRole roles={["mother"]}>
+                  <CareCircleQR />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/caregiver"
+              element={
+                <RequireRole roles={["caregiver"]}>
+                  <CaregiverPage />
+                </RequireRole>
+              }
+            />
             <Route path="/herreach" element={<HerReachPage />} />
+            <Route path="/library" element={<EducationLibraryPage />} />
+            <Route path="/offline-library" element={<EducationLibraryPage />} />
             <Route path="/emergency" element={<EmergencyPage />} />
             <Route path="/reports" element={<ReportsZone />} />
+            <Route
+              path="/district-analytics"
+              element={
+                <RequireRole roles={["doctor", "admin"]}>
+                  <DistrictAnalyticsPage />
+                </RequireRole>
+              }
+            />
 
             {/* Account & Settings */}
             <Route path="/profile" element={<ProfilePage />} />
@@ -89,6 +177,8 @@ export default function App() {
             {/* Auth entry points redirect home once signed in */}
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/register" element={<Navigate to="/" replace />} />
+            <Route path="/internal/admin/login" element={<Navigate to="/" replace />} />
+            <Route path="/demo" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>

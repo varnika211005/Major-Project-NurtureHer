@@ -11,9 +11,42 @@ export type User = {
   preferred_language: string;
   is_verified: boolean;
   is_active: boolean;
+  custom_id?: string | null;
+  medical_license?: string | null;
+  assigned_doctor_id?: string | null;
+  assigned_mother_id?: string | null;
+  age?: number | null;
+  specialization?: string | null;
+  qualifications?: string | null;
+  experience_years?: number | null;
+  hospital_clinic?: string | null;
+  relationship_label?: string | null;
+};
+
+export type LoginIdentifiers = {
+  doctor_id?: string;
+  medical_license?: string;
+  mother_id?: string;
+};
+
+export type RegisterPayload = {
+  email: string;
+  name: string;
+  password: string;
+  confirm_password?: string;
+  phone?: string;
+  role?: string;
+  preferred_language?: string;
+  age?: number;
+  doctor_id?: string;
+  medical_license?: string;
+  mother_id?: string;
 };
 
 export type TokenPair = { access_token: string; refresh_token: string; token_type: string };
+export type AdminUserUpdatePayload = Partial<
+  Pick<User, "name" | "phone" | "preferred_language" | "role" | "is_active" | "is_verified">
+>;
 export type Mood = { id: string; mood: "happy" | "sad" | "anxious" | "tired" | "angry"; note: string | null; created_at: string };
 export type Symptom = { id: string; fatigue: boolean; headache: boolean; sleep_issue: boolean; anxiety: boolean; cramps: boolean; created_at: string };
 export type Journal = { id: string; title: string; content: string; created_at: string };
@@ -32,7 +65,24 @@ export type PCOSPredictPayload = {
   pimples: boolean;
 };
 export type PPDAssessment = { id: string; epds_score: number; sentiment: string; risk_level: string; created_at: string };
-export type ChatMessage = { id: string; message: string; response: string; language: string; created_at: string };
+export type ChatSource = {
+  id: string;
+  title: string;
+  kind: "medical_corpus" | "internal_knowledge";
+  page?: string | null;
+  section?: string | null;
+  publisher?: string | null;
+  publication_date?: string | null;
+  source?: string | null;
+};
+export type ChatMessage = {
+  id: string;
+  message: string;
+  response: string;
+  language: string;
+  created_at: string;
+  sources?: ChatSource[];
+};
 export type CaregiverContent = { id: string; title: string; description: string; video_url: string | null; category: string; created_at: string };
 export type Alert = { id: string; user_id: string; message: string; sent_status: string; sent_at: string | null };
 export type DashboardStats = { today_mood: Mood | null; symptoms: Symptom | null; cycle_prediction: string | null; pcos_risk: string | null; ppd_status: string | null };
@@ -46,15 +96,31 @@ export type Profile = {
   phone?: string | null;
   role?: string;
   preferred_language?: string;
-  age: number | null;
-  weight: number | null;
-  height: number | null;
-  blood_group: string | null;
-  pregnancy_status: string | null;
-  delivery_date: string | null;
-  emergency_contact: string | null;
-  district: string | null;
-  village: string | null;
+  custom_id?: string | null;
+  is_verified?: boolean;
+  age?: number | null;
+  // Mother fields
+  weight?: number | null;
+  height?: number | null;
+  blood_group?: string | null;
+  pregnancy_status?: string | null;
+  delivery_date?: string | null;
+  emergency_contact?: string | null;
+  district?: string | null;
+  village?: string | null;
+  assigned_doctor_id?: string | null;
+  assigned_doctors?: { id: string; name: string; custom_id: string | null }[];
+  // Doctor fields
+  medical_license?: string | null;
+  specialization?: string | null;
+  qualifications?: string | null;
+  experience_years?: number | null;
+  hospital_clinic?: string | null;
+  // Caregiver fields
+  assigned_mother_id?: string | null;
+  linked_mother?: { id: string; name: string; custom_id: string | null } | null;
+  caregiver_status?: string | null;
+  relationship_label?: string | null;
   created_at?: string;
 };
 
@@ -215,6 +281,33 @@ export type CareCircleConnectionItem = {
   permissions: Record<string, boolean> & { nutrition?: boolean };
 };
 
+export interface EducationalResource {
+  id: string;
+  title: string;
+  description: string;
+  content_type: "video" | "article";
+  language?: string;
+  series_name?: string | null;
+  is_verified?: boolean;
+  category: string;
+  video_url?: string | null;
+  thumbnail_url?: string | null;
+  duration_seconds?: number | null;
+  file_size_bytes?: number | null;
+  article_content?: string | null;
+  author_publisher?: string | null;
+  review_date?: string | null;
+  sources_json?: string | null;
+  is_downloadable: boolean;
+  is_published: boolean;
+  created_at: string;
+}
+
+export interface EducationCategories {
+  video_categories: string[];
+  article_categories: string[];
+}
+
 export type DoctorPatientItem = {
   id: string;
   name: string;
@@ -301,6 +394,43 @@ export function setTokens(tokens: TokenPair | null) {
   }
 }
 
+export function hasTokens(): boolean {
+  return Boolean(
+    accessToken ||
+    refreshToken ||
+    (typeof sessionStorage !== "undefined" &&
+      (sessionStorage.getItem("nurtureher_access_token") ||
+        sessionStorage.getItem("nurtureher_refresh_token")))
+  );
+}
+
+function parseApiErrorMessage(detail: unknown, fallback: string): string {
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item && typeof (item as { msg: unknown }).msg === "string") {
+          return (item as { msg: string }).msg;
+        }
+        return JSON.stringify(item);
+      })
+      .filter(Boolean);
+    if (messages.length > 0) {
+      return messages.join(", ");
+    }
+  }
+  if (detail && typeof detail === "object") {
+    if ("message" in detail && typeof (detail as { message: unknown }).message === "string") {
+      return (detail as { message: string }).message;
+    }
+    return JSON.stringify(detail);
+  }
+  return fallback;
+}
+
 async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json");
@@ -316,16 +446,36 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
     }
   }
   if (!response.ok) {
-    const detail = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(detail.detail ?? "Request failed");
+    const body = await response.json().catch(() => null);
+    const message = parseApiErrorMessage(body?.detail, response.statusText || "Request failed");
+    throw new Error(message);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
 export const api = {
-  login: (email: string, password: string) => request<TokenPair>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
-  register: (payload: { email: string; name: string; password: string; phone?: string; role?: string; preferred_language?: string }) => request<User>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
+  login: (
+    email: string,
+    password: string,
+    portal?: UserRole,
+    identifiers?: LoginIdentifiers,
+  ) =>
+    request<TokenPair>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        password,
+        ...(portal ? { portal } : {}),
+        ...(identifiers?.doctor_id ? { doctor_id: identifiers.doctor_id } : {}),
+        ...(identifiers?.medical_license ? { medical_license: identifiers.medical_license } : {}),
+        ...(identifiers?.mother_id ? { mother_id: identifiers.mother_id } : {}),
+      }),
+    }),
+  adminLogin: (email: string, password: string) =>
+    request<TokenPair>("/auth/admin/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  register: (payload: RegisterPayload) =>
+    request<User>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
   me: () => request<User>("/auth/me"),
   logout: () => request<void>("/auth/logout", { method: "POST", body: JSON.stringify({ refresh_token: refreshToken }) }),
 
@@ -415,6 +565,8 @@ export const api = {
 
   // Admin
   adminUsers: () => request<User[]>("/admin/users"),
+  adminUpdateUser: (userId: string, payload: AdminUserUpdatePayload) =>
+    request<User>(`/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify(payload) }),
   adminAuditLogs: () => request<Record<string, unknown>[]>("/admin/audit-logs"),
   adminDashboard: () => request<Record<string, unknown>>("/admin/dashboard"),
 
@@ -435,6 +587,37 @@ export const api = {
 
   // Notifications
   notifications: () => request<Alert[]>("/notifications"),
+
+  // Education & Resource Library
+  educationCategories: () => request<EducationCategories>("/education/categories"),
+  educationResources: (params?: { content_type?: string; language?: string; category?: string; search?: string; limit?: number; offset?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.content_type) sp.set("content_type", params.content_type);
+    if (params?.language) sp.set("language", params.language);
+    if (params?.category) sp.set("category", params.category);
+    if (params?.search) sp.set("search", params.search);
+    if (params?.limit) sp.set("limit", String(params.limit));
+    if (params?.offset) sp.set("offset", String(params.offset));
+    const qs = sp.toString();
+    return request<EducationalResource[]>(qs ? `/education/resources?${qs}` : "/education/resources");
+  },
+  educationVideos: (params?: { language?: string; category?: string; search?: string }) => {
+    const sp = new URLSearchParams();
+    if (params?.language) sp.set("language", params.language);
+    if (params?.category) sp.set("category", params.category);
+    if (params?.search) sp.set("search", params.search);
+    const qs = sp.toString();
+    return request<EducationalResource[]>(qs ? `/education/videos?${qs}` : "/education/videos");
+  },
+  educationArticles: (params?: { language?: string; category?: string; search?: string }) => {
+    const sp = new URLSearchParams();
+    if (params?.language) sp.set("language", params.language);
+    if (params?.category) sp.set("category", params.category);
+    if (params?.search) sp.set("search", params.search);
+    const qs = sp.toString();
+    return request<EducationalResource[]>(qs ? `/education/articles?${qs}` : "/education/articles");
+  },
+  educationResource: (id: string) => request<EducationalResource>(`/education/resources/${id}`),
 };
 
 export async function uploadVoice(file: File, language: string) {

@@ -136,34 +136,130 @@ async def insights(user: User = Depends(get_current_user), db: AsyncSession = De
 
 @router.get("/profile")
 async def get_profile(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    from sqlalchemy import select
-    from app.models.user import MotherProfile
+    from sqlalchemy import or_, select
+    from app.models.carecircle import CareCircleAccess
+    from app.models.doctor import DoctorPatient
+    from app.models.user import MotherProfile, User
 
-    profile = await db.scalar(select(MotherProfile).where(MotherProfile.user_id == user.id))
-    if not profile:
-        profile = MotherProfile(user_id=user.id)
-        db.add(profile)
-        await db.commit()
-        await db.refresh(profile)
+    db_user = await db.get(User, user.id)
+    if db_user:
+        user = db_user
 
-    return {
-        "id": str(profile.id),
+    base_response = {
+        "id": str(user.id),
         "user_id": str(user.id),
         "name": user.name,
         "email": user.email,
         "phone": user.phone,
         "role": user.role,
         "preferred_language": user.preferred_language,
-        "age": profile.age,
-        "weight": profile.weight,
-        "height": profile.height,
-        "blood_group": profile.blood_group,
-        "pregnancy_status": profile.pregnancy_status,
-        "delivery_date": str(profile.delivery_date) if profile.delivery_date else None,
-        "emergency_contact": profile.emergency_contact,
-        "district": profile.district,
-        "village": profile.village,
+        "custom_id": user.custom_id,
+        "is_verified": user.is_verified,
+        "age": user.age,
     }
+
+    if user.role == UserRole.MOTHER:
+        profile = await db.scalar(select(MotherProfile).where(MotherProfile.user_id == user.id))
+        if not profile:
+            profile = MotherProfile(user_id=user.id, age=user.age)
+            db.add(profile)
+            await db.commit()
+            await db.refresh(profile)
+
+        # Retrieve active assigned doctors from DoctorPatient
+        assigned_docs_res = await db.execute(
+            select(User)
+            .join(DoctorPatient, DoctorPatient.doctor_id == User.id)
+            .where(
+                DoctorPatient.patient_id == user.id,
+                DoctorPatient.status == "active",
+                DoctorPatient.deleted_at.is_(None),
+            )
+        )
+        assigned_doctors = [
+            {"id": str(d.id), "name": d.name, "custom_id": d.custom_id}
+            for d in assigned_docs_res.scalars().all()
+        ]
+
+        if not assigned_doctors and user.assigned_doctor_id:
+            doc = await db.scalar(
+                select(User).where(
+                    User.role == UserRole.DOCTOR,
+                    or_(
+                        User.custom_id == user.assigned_doctor_id,
+                        User.custom_id == user.assigned_doctor_id.upper(),
+                    ),
+                )
+            )
+            if doc:
+                assigned_doctors.append({"id": str(doc.id), "name": doc.name, "custom_id": doc.custom_id})
+
+        base_response.update({
+            "mother_id": user.custom_id,
+            "age": profile.age if profile.age is not None else user.age,
+            "weight": profile.weight,
+            "height": profile.height,
+            "blood_group": profile.blood_group,
+            "pregnancy_status": profile.pregnancy_status,
+            "delivery_date": str(profile.delivery_date) if profile.delivery_date else None,
+            "emergency_contact": profile.emergency_contact,
+            "district": profile.district,
+            "village": profile.village,
+            "assigned_doctor_id": user.assigned_doctor_id,
+            "assigned_doctors": assigned_doctors,
+        })
+        return base_response
+
+    elif user.role == UserRole.DOCTOR:
+        base_response.update({
+            "doctor_id": user.custom_id,
+            "medical_license": user.medical_license,
+            "specialization": user.specialization,
+            "qualifications": user.qualifications,
+            "experience_years": user.experience_years,
+            "hospital_clinic": user.hospital_clinic,
+        })
+        return base_response
+
+    elif user.role == UserRole.CAREGIVER:
+        linked_mother = None
+        caregiver_status = "pending"
+        relationship_label = user.relationship_label or "Caregiver"
+
+        if user.assigned_mother_id:
+            mth = await db.scalar(
+                select(User).where(
+                    User.role == UserRole.MOTHER,
+                    or_(
+                        User.custom_id == user.assigned_mother_id,
+                        User.custom_id == user.assigned_mother_id.upper(),
+                    ),
+                )
+            )
+            if mth:
+                linked_mother = {"id": str(mth.id), "name": mth.name, "custom_id": mth.custom_id}
+                cca = await db.scalar(
+                    select(CareCircleAccess).where(
+                        CareCircleAccess.user_id == mth.id,
+                        CareCircleAccess.requester_id == user.id,
+                        CareCircleAccess.revoked_at.is_(None),
+                    )
+                )
+                if cca:
+                    caregiver_status = cca.status
+                    if cca.relationship_label:
+                        relationship_label = cca.relationship_label
+
+        base_response.update({
+            "caregiver_id": user.custom_id,
+            "assigned_mother_id": user.assigned_mother_id,
+            "linked_mother": linked_mother,
+            "caregiver_status": caregiver_status,
+            "relationship_label": relationship_label,
+        })
+        return base_response
+
+    return base_response
 
 
 @router.put("/profile")
@@ -173,31 +269,68 @@ async def update_profile(
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import select
-    from app.models.user import MotherProfile
+    from app.models.carecircle import CareCircleAccess
+    from app.models.user import MotherProfile, User
 
-    profile = await db.scalar(select(MotherProfile).where(MotherProfile.user_id == user.id))
-    if not profile:
-        profile = MotherProfile(user_id=user.id)
-        db.add(profile)
+    db_user = await db.get(User, user.id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    for field, val in payload.model_dump(exclude_unset=True).items():
-        setattr(profile, field, val)
+    data = payload.model_dump(exclude_unset=True)
+
+    if "name" in data and data["name"]:
+        db_user.name = data["name"].strip()
+    if "phone" in data:
+        db_user.phone = data["phone"].strip() if data["phone"] else None
+    if "preferred_language" in data and data["preferred_language"]:
+        db_user.preferred_language = data["preferred_language"].strip()
+
+    if db_user.role == UserRole.MOTHER:
+        profile = await db.scalar(select(MotherProfile).where(MotherProfile.user_id == db_user.id))
+        if not profile:
+            profile = MotherProfile(user_id=db_user.id)
+            db.add(profile)
+
+        mother_fields = [
+            "age", "weight", "height", "blood_group", "pregnancy_status",
+            "delivery_date", "emergency_contact", "district", "village"
+        ]
+        for field in mother_fields:
+            if field in data:
+                setattr(profile, field, data[field])
+
+        if "age" in data and data["age"] is not None:
+            db_user.age = data["age"]
+
+    elif db_user.role == UserRole.DOCTOR:
+        if "age" in data:
+            db_user.age = data["age"]
+        if "specialization" in data:
+            db_user.specialization = data["specialization"].strip() if data["specialization"] else None
+        if "qualifications" in data:
+            db_user.qualifications = data["qualifications"].strip() if data["qualifications"] else None
+        if "experience_years" in data:
+            db_user.experience_years = data["experience_years"]
+        if "hospital_clinic" in data:
+            db_user.hospital_clinic = data["hospital_clinic"].strip() if data["hospital_clinic"] else None
+
+    elif db_user.role == UserRole.CAREGIVER:
+        if "relationship_label" in data:
+            rel = data["relationship_label"].strip() if data["relationship_label"] else None
+            db_user.relationship_label = rel
+            access = await db.scalar(
+                select(CareCircleAccess).where(
+                    CareCircleAccess.requester_id == db_user.id,
+                    CareCircleAccess.revoked_at.is_(None),
+                )
+            )
+            if access and rel:
+                access.relationship_label = rel
 
     await db.commit()
-    await db.refresh(profile)
-    return {
-        "id": str(profile.id),
-        "age": profile.age,
-        "weight": profile.weight,
-        "height": profile.height,
-        "blood_group": profile.blood_group,
-        "pregnancy_status": profile.pregnancy_status,
-        "delivery_date": str(profile.delivery_date) if profile.delivery_date else None,
-        "emergency_contact": profile.emergency_contact,
-        "district": profile.district,
-        "village": profile.village,
-        "message": "Health profile updated successfully.",
-    }
+    await db.refresh(db_user)
+
+    return await get_profile(user=db_user, db=db)
 
 
 @router.get("/reports")

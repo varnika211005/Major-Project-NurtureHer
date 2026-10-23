@@ -1,13 +1,16 @@
 """Pipeline tests: disclaimer enforcement, citations, evidence gating,
 translation fallback safety, language persistence, and isolation."""
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.rag.prompt_templates import REQUIRED_DISCLAIMER, ensure_disclaimer
 from app.rag.retriever import HealthKnowledgeRetriever
+from app.rag_v2.evidence import EvidenceVerdict
 from app.schemas.health import ChatRequest
 from app.services.chat_service import ChatbotService
 from app.services.memory_service import ConversationMemoryService
+from app.services.rag_service import RAGService
 from tests.conftest import make_chat_user
 
 
@@ -92,6 +95,31 @@ async def test_insufficient_evidence_path_has_disclaimer_and_no_answer(db_sessio
     assert "don't have enough reliable information" in chat.response
     assert REQUIRED_DISCLAIMER in chat.response
     assert "Paris" not in chat.response
+
+
+async def test_ambiguous_evidence_asks_localized_clarification(db_session, monkeypatch):
+    class _AmbiguousCorpus:
+        def retrieve(self, query):
+            return SimpleNamespace(
+                verdict=EvidenceVerdict.AMBIGUOUS,
+                reason="competing topics",
+                cited_ids=(),
+                top_score=0.5,
+                context_lines=(),
+            )
+
+    async def _no_v1_evidence(self, user, message, language):
+        return "", "", ()
+
+    monkeypatch.setattr("app.services.chat_service.get_corpus_index", lambda: _AmbiguousCorpus())
+    monkeypatch.setattr(RAGService, "build_context", _no_v1_evidence)
+    user = await make_chat_user(db_session, email="ambiguous@example.com")
+    chat = await ChatbotService(db_session).message(
+        user, ChatRequest(message="Tell me more about this.", language="hi")
+    )
+    assert "सही जानकारी" in chat.response
+    assert "don't have enough reliable information" not in chat.response
+    assert chat.sources == []
 
 
 async def test_translation_failure_falls_back_without_logging_query(db_session, monkeypatch, caplog):

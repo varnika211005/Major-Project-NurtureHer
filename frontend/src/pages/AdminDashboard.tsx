@@ -15,6 +15,7 @@ import {
   UserX,
 } from "lucide-react";
 import { api, User } from "@/lib/api";
+import { formatDateTime } from "@/lib/locale";
 import { Page } from "@/components/common/Page";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ export function AdminDashboard() {
   const [userSearch, setUserSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     loadData();
@@ -78,21 +80,25 @@ export function AdminDashboard() {
 
   async function toggleUserStatus(user: User) {
     setUpdatingUserId(user.id);
+    setActionError("");
     try {
-      const token = sessionStorage.getItem("nurtureher_access_token");
-      const res = await fetch(`/api/v1/admin/users/${user.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ is_active: !user.is_active }),
-      });
-      if (!res.ok) throw new Error("Failed to update user status");
-      const updated = await res.json();
+      const updated = await api.adminUpdateUser(user.id, { is_active: !user.is_active });
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_active: updated.is_active } : u)));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error updating user");
+      setActionError(err instanceof Error ? err.message : "Error updating user");
+    } finally {
+      setUpdatingUserId(null);
+    }
+  }
+
+  async function toggleUserVerification(user: User) {
+    setUpdatingUserId(user.id);
+    setActionError("");
+    try {
+      const updated = await api.adminUpdateUser(user.id, { is_verified: !user.is_verified });
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_verified: updated.is_verified } : u)));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Error updating verification");
     } finally {
       setUpdatingUserId(null);
     }
@@ -113,7 +119,7 @@ export function AdminDashboard() {
       subtitle="Operational telemetry, user access enforcement, audit compliance logs, and AI model monitoring."
     >
       {/* Disclaimer */}
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs leading-relaxed text-lavender-900 shadow-sm dark:border-lavender-800/40 dark:bg-lavender-950/40 dark:text-lavender-200">
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs leading-relaxed text-lavender-900 shadow-sm">
         <Shield className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div>
           <span className="font-bold">Administrative Compliance Guard:</span> All account activations, role modifications,
@@ -124,71 +130,71 @@ export function AdminDashboard() {
 
       {/* Global Telemetry Metrics */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-lavender-100 bg-white/90 p-5 shadow-soft dark:border-white/10 dark:bg-card">
+        <Card className="border-lavender-100 bg-surface/90 p-5 shadow-soft">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted dark:text-white/60">Total Accounts</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">Total Accounts</span>
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </span>
           </div>
-          <div className="mt-3 text-3xl font-black text-ink dark:text-white">
+          <div className="mt-3 text-3xl font-black text-ink">
             {stats ? stats.users : "—"}
           </div>
-          <p className="mt-1 text-xs text-muted dark:text-white/50">Mothers, Doctors, Caregivers</p>
+          <p className="mt-1 text-xs text-muted">Mothers, Doctors, Caregivers</p>
         </Card>
 
-        <Card className="border-lavender-100 bg-white/90 p-5 shadow-soft dark:border-white/10 dark:bg-card">
+        <Card className="border-lavender-100 bg-surface/90 p-5 shadow-soft">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-secondary dark:text-lavender-300">Screening Runs</span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
+            <span className="text-xs font-bold uppercase tracking-wider text-lavender-700 dark:text-lavender-300">Screening Runs</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary/10 text-lavender-700 dark:text-lavender-300">
               <HeartPulse className="h-5 w-5" />
             </span>
           </div>
-          <div className="mt-3 text-3xl font-black text-ink dark:text-white">
+          <div className="mt-3 text-3xl font-black text-ink">
             {stats ? stats.pcos_predictions + stats.ppd_assessments : "—"}
           </div>
-          <p className="mt-1 text-xs text-muted dark:text-white/50">
+          <p className="mt-1 text-xs text-muted">
             {stats ? `${stats.pcos_predictions} PCOS · ${stats.ppd_assessments} PPD` : "Loading..."}
           </p>
         </Card>
 
-        <Card className="border-amber-100 bg-amber-50/40 p-5 shadow-soft dark:border-amber-900/30 dark:bg-amber-950/20">
+        <Card className="border-warning/30 bg-warning/10 p-5 shadow-soft">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">High-Risk Cases</span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-900/50">
+            <span className="text-xs font-bold uppercase tracking-wider text-orange-700 dark:text-orange-300">High-Risk Cases</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/15 text-orange-700 dark:text-orange-300">
               <ShieldAlert className="h-5 w-5" />
             </span>
           </div>
-          <div className="mt-3 text-3xl font-black text-amber-700 dark:text-amber-200">
+          <div className="mt-3 text-3xl font-black text-orange-700 dark:text-orange-200">
             {stats ? stats.high_risk_cases : "—"}
           </div>
-          <p className="mt-1 text-xs text-amber-600/80 dark:text-amber-300/70">Open high-risk cases awaiting review</p>
+            <p className="mt-1 text-xs text-orange-700/80 dark:text-orange-300/70">Open high-risk cases awaiting review</p>
         </Card>
 
-        <Card className="border-lavender-100 bg-white/90 p-5 shadow-soft dark:border-white/10 dark:bg-card">
+        <Card className="border-lavender-100 bg-surface/90 p-5 shadow-soft">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted dark:text-white/60">Audit Trail Events</span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-lavender-100 text-primary dark:bg-lavender-900/50">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">Audit Trail Events</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-lavender-100 text-primary">
               <Database className="h-5 w-5" />
             </span>
           </div>
-          <div className="mt-3 text-3xl font-black text-ink dark:text-white">
+          <div className="mt-3 text-3xl font-black text-ink">
             {stats ? stats.audit_logs : "—"}
           </div>
-          <p className="mt-1 text-xs text-muted dark:text-white/50">Security & access log count</p>
+          <p className="mt-1 text-xs text-muted">Security & access log count</p>
         </Card>
       </div>
 
       {/* Navigation Tabs */}
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex gap-2 rounded-2xl bg-lavender-100/70 p-1 dark:bg-white/10">
+        <div className="flex gap-2 rounded-2xl bg-lavender-100/70 p-1">
           <button
             type="button"
             onClick={() => setActiveTab("users")}
             className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-colors ${
               activeTab === "users"
-                ? "bg-white text-primary shadow-xs dark:bg-primary dark:text-white"
-                : "text-muted hover:text-ink dark:text-white/60 dark:hover:text-white"
+                ? "bg-surface text-primary shadow-xs"
+                : "text-muted hover:text-ink"
             }`}
           >
             <Users className="h-4 w-4" /> User Management ({users.length})
@@ -198,8 +204,8 @@ export function AdminDashboard() {
             onClick={() => setActiveTab("logs")}
             className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-colors ${
               activeTab === "logs"
-                ? "bg-white text-primary shadow-xs dark:bg-primary dark:text-white"
-                : "text-muted hover:text-ink dark:text-white/60 dark:hover:text-white"
+                ? "bg-surface text-primary shadow-xs"
+                : "text-muted hover:text-ink"
             }`}
           >
             <FileText className="h-4 w-4" /> Audit Logs ({auditLogs.length})
@@ -209,8 +215,8 @@ export function AdminDashboard() {
             onClick={() => setActiveTab("models")}
             className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-colors ${
               activeTab === "models"
-                ? "bg-white text-primary shadow-xs dark:bg-primary dark:text-white"
-                : "text-muted hover:text-ink dark:text-white/60 dark:hover:text-white"
+                ? "bg-surface text-primary shadow-xs"
+                : "text-muted hover:text-ink"
             }`}
           >
             <Bot className="h-4 w-4" /> AI Models & Pipeline Health
@@ -233,8 +239,8 @@ export function AdminDashboard() {
         <Card className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-black text-ink dark:text-white">User Accounts & Roles</h2>
-              <p className="text-xs text-muted dark:text-white/60">Enforce role-based access control and account lifecycle states.</p>
+              <h2 className="text-base font-black text-ink">User Accounts & Roles</h2>
+              <p className="text-xs text-muted">Enforce role-based access control and account lifecycle states.</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -245,7 +251,7 @@ export function AdminDashboard() {
                   placeholder="Search user name or email..."
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
-                  className="h-9 w-full rounded-xl border border-lavender-200 bg-lavender-50/40 pl-9 pr-3 text-xs outline-none focus:border-primary dark:border-white/10 dark:bg-white/5 dark:text-white"
+                  className="h-9 w-full rounded-xl border border-lavender-200 bg-lavender-50/40 pl-9 pr-3 text-xs text-ink outline-none focus:border-primary"
                 />
               </div>
 
@@ -253,7 +259,7 @@ export function AdminDashboard() {
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
                 aria-label="Filter users by role"
-                className="h-9 rounded-xl border border-lavender-200 bg-lavender-50/40 px-3 text-xs font-semibold text-ink outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
+                className="h-9 rounded-xl border border-lavender-200 bg-lavender-50/40 px-3 text-xs font-semibold text-ink outline-none"
               >
                 <option value="all">All Roles</option>
                 <option value="mother">Mother</option>
@@ -264,24 +270,31 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-lavender-100 dark:border-white/10">
+          {actionError ? (
+            <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
+              {actionError}
+            </p>
+          ) : null}
+
+          <div className="mt-6 overflow-hidden rounded-2xl border border-lavender-100">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-lavender-100 bg-lavender-50/60 text-muted dark:border-white/10 dark:bg-white/5 dark:text-white/60">
+                <thead className="border-b border-lavender-100 bg-lavender-50/60 text-muted">
                   <tr>
                     <th className="px-4 py-3 font-black uppercase tracking-wider">User</th>
                     <th className="px-4 py-3 font-black uppercase tracking-wider">Assigned Role</th>
                     <th className="px-4 py-3 font-black uppercase tracking-wider">Language</th>
                     <th className="px-4 py-3 font-black uppercase tracking-wider">Account State</th>
+                    <th className="px-4 py-3 font-black uppercase tracking-wider">Verification</th>
                     <th className="px-4 py-3 text-right font-black uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-lavender-100 dark:divide-white/10">
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-lavender-50/40 dark:hover:bg-white/5">
+              <tbody className="divide-y divide-lavender-100">
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-lavender-50/40">
                       <td className="px-4 py-3.5">
-                        <div className="font-bold text-ink dark:text-white">{user.name}</div>
-                        <div className="text-[11px] text-muted dark:text-white/50">{user.email}</div>
+                        <div className="font-bold text-ink">{user.name}</div>
+                        <div className="text-[11px] text-muted">{user.email}</div>
                       </td>
                       <td className="px-4 py-3.5">
                         <span
@@ -291,14 +304,14 @@ export function AdminDashboard() {
                               : user.role === "doctor"
                               ? "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300"
                               : user.role === "caregiver"
-                              ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
-                              : "bg-lavender-100 text-primary dark:bg-lavender-900/50 dark:text-lavender-300"
+                              ? "bg-warning/15 text-orange-800 dark:text-orange-200"
+                              : "bg-lavender-100 text-primary"
                           }`}
                         >
                           {user.role.replace("_", " ")}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 font-semibold uppercase text-muted dark:text-white/60">
+                      <td className="px-4 py-3.5 font-semibold uppercase text-muted">
                         {user.preferred_language || "en"}
                       </td>
                       <td className="px-4 py-3.5">
@@ -313,16 +326,44 @@ export function AdminDashboard() {
                           {user.is_active ? "Active" : "Disabled"}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={updatingUserId === user.id}
-                          onClick={() => toggleUserStatus(user)}
-                          className={user.is_active ? "text-rose-600 hover:text-rose-700" : "text-emerald-600 hover:text-emerald-700"}
-                        >
-                          {user.is_active ? "Deactivate" : "Activate"}
-                        </Button>
+                      <td className="px-4 py-3.5">
+                        {user.role === "doctor" ? (
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                              user.is_verified
+                                ? "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300"
+                                : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                            }`}
+                          >
+                            {user.is_verified ? "Verified" : "Pending"}
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex flex-wrap justify-end gap-1">
+                          {user.role === "doctor" ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={updatingUserId === user.id}
+                              onClick={() => toggleUserVerification(user)}
+                              className={user.is_verified ? "text-amber-700 hover:text-amber-800" : "text-sky-700 hover:text-sky-800"}
+                            >
+                              {user.is_verified ? "Revoke verification" : "Verify doctor"}
+                            </Button>
+                          ) : null}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={updatingUserId === user.id}
+                            onClick={() => toggleUserStatus(user)}
+                            className={user.is_active ? "text-rose-600 hover:text-rose-700" : "text-emerald-600 hover:text-emerald-700"}
+                          >
+                            {user.is_active ? "Deactivate" : "Activate"}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -334,14 +375,14 @@ export function AdminDashboard() {
       ) : activeTab === "logs" ? (
         <Card className="p-6">
           <div>
-            <h2 className="text-base font-black text-ink dark:text-white">Security & Data Access Audit Trail</h2>
-            <p className="text-xs text-muted dark:text-white/60">Complete audit log of authentication, screening requests, and data exports.</p>
+            <h2 className="text-base font-black text-ink">Security & Data Access Audit Trail</h2>
+            <p className="text-xs text-muted">Complete audit log of authentication, screening requests, and data exports.</p>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-lavender-100 dark:border-white/10">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-lavender-100">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-lavender-100 bg-lavender-50/60 text-muted dark:border-white/10 dark:bg-white/5 dark:text-white/60">
+                <thead className="border-b border-lavender-100 bg-lavender-50/60 text-muted">
                   <tr>
                     <th className="px-4 py-3 font-black uppercase tracking-wider">Timestamp</th>
                     <th className="px-4 py-3 font-black uppercase tracking-wider">Action</th>
@@ -349,20 +390,20 @@ export function AdminDashboard() {
                     <th className="px-4 py-3 font-black uppercase tracking-wider">User ID</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-lavender-100 dark:divide-white/10 font-mono">
+                <tbody className="divide-y divide-lavender-100 font-mono">
                   {auditLogs.length > 0 ? (
                     auditLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-lavender-50/40 dark:hover:bg-white/5">
-                        <td className="px-4 py-3 text-[11px] text-muted dark:text-white/60">
-                          {new Date(log.created_at).toLocaleString()}
+                      <tr key={log.id} className="hover:bg-lavender-50/40">
+                        <td className="px-4 py-3 text-[11px] text-muted">
+                          {formatDateTime(log.created_at)}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="rounded bg-lavender-100 px-2 py-0.5 text-[11px] font-bold text-primary dark:bg-white/10 dark:text-lavender-300">
+                          <span className="rounded bg-lavender-100 px-2 py-0.5 text-[11px] font-bold text-primary">
                             {log.action}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-ink dark:text-white">{log.resource}</td>
-                        <td className="px-4 py-3 text-[11px] text-muted dark:text-white/50">
+                        <td className="px-4 py-3 text-ink">{log.resource}</td>
+                        <td className="px-4 py-3 text-[11px] text-muted">
                           {log.user_id ? log.user_id.slice(0, 8) + "..." : "System"}
                         </td>
                       </tr>
@@ -389,7 +430,7 @@ export function AdminDashboard() {
                   <HeartPulse className="h-5 w-5" />
                 </span>
                 <div>
-                  <h3 className="text-sm font-black text-ink dark:text-white">PCOS Classifier</h3>
+                  <h3 className="text-sm font-black text-ink">PCOS Classifier</h3>
                   <p className="text-[11px] text-muted">XGBoost & Clinical Biomarkers</p>
                 </div>
               </div>
@@ -397,18 +438,18 @@ export function AdminDashboard() {
                 <CheckCircle className="h-3.5 w-3.5" /> Online
               </span>
             </div>
-            <div className="mt-4 space-y-2 rounded-xl bg-lavender-50/50 p-3 text-xs text-muted dark:bg-white/5 dark:text-white/60">
+            <div className="mt-4 space-y-2 rounded-xl bg-lavender-50/50 p-3 text-xs text-muted">
               <div className="flex justify-between">
                 <span>Validation Accuracy:</span>
-                <span className="font-bold text-ink dark:text-white">92.4%</span>
+                <span className="font-bold text-ink">92.4%</span>
               </div>
               <div className="flex justify-between">
                 <span>ROC-AUC:</span>
-                <span className="font-bold text-ink dark:text-white">0.941</span>
+                <span className="font-bold text-ink">0.941</span>
               </div>
               <div className="flex justify-between">
                 <span>Feature Imputations:</span>
-                <span className="font-bold text-ink dark:text-white">Enabled (Median fallback)</span>
+                <span className="font-bold text-ink">Enabled (Median fallback)</span>
               </div>
             </div>
           </Card>
@@ -416,11 +457,11 @@ export function AdminDashboard() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary/10 text-lavender-700 dark:text-lavender-300">
                   <Activity className="h-5 w-5" />
                 </span>
                 <div>
-                  <h3 className="text-sm font-black text-ink dark:text-white">PPD NLP Engine</h3>
+                  <h3 className="text-sm font-black text-ink">PPD NLP Engine</h3>
                   <p className="text-[11px] text-muted">EPDS Scoring + Sentiment Analysis</p>
                 </div>
               </div>
@@ -428,18 +469,18 @@ export function AdminDashboard() {
                 <CheckCircle className="h-3.5 w-3.5" /> Online
               </span>
             </div>
-            <div className="mt-4 space-y-2 rounded-xl bg-lavender-50/50 p-3 text-xs text-muted dark:bg-white/5 dark:text-white/60">
+            <div className="mt-4 space-y-2 rounded-xl bg-lavender-50/50 p-3 text-xs text-muted">
               <div className="flex justify-between">
                 <span>EPDS Cutoff Threshold:</span>
-                <span className="font-bold text-ink dark:text-white">10/30 (High Risk)</span>
+                <span className="font-bold text-ink">10/30 (High Risk)</span>
               </div>
               <div className="flex justify-between">
                 <span>Sentiment Model:</span>
-                <span className="font-bold text-ink dark:text-white">DistilRoBERTa Clinical</span>
+                <span className="font-bold text-ink">DistilRoBERTa Clinical</span>
               </div>
               <div className="flex justify-between">
                 <span>Harm Alert Escalation:</span>
-                <span className="font-bold text-ink dark:text-white">Automated SMS</span>
+                <span className="font-bold text-ink">Automated SMS</span>
               </div>
             </div>
           </Card>
@@ -447,11 +488,11 @@ export function AdminDashboard() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-lavender-100 text-primary dark:bg-lavender-900/50">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-lavender-100 text-primary">
                   <Bot className="h-5 w-5" />
                 </span>
                 <div>
-                  <h3 className="text-sm font-black text-ink dark:text-white">RAG Health Coach</h3>
+                  <h3 className="text-sm font-black text-ink">RAG Health Coach</h3>
                   <p className="text-[11px] text-muted">Multilingual Maternal RAG</p>
                 </div>
               </div>
@@ -459,18 +500,18 @@ export function AdminDashboard() {
                 <CheckCircle className="h-3.5 w-3.5" /> Online
               </span>
             </div>
-            <div className="mt-4 space-y-2 rounded-xl bg-lavender-50/50 p-3 text-xs text-muted dark:bg-white/5 dark:text-white/60">
+            <div className="mt-4 space-y-2 rounded-xl bg-lavender-50/50 p-3 text-xs text-muted">
               <div className="flex justify-between">
                 <span>LLM Engine:</span>
-                <span className="font-bold text-ink dark:text-white">Gemini 2.5 Flash / Omni</span>
+                <span className="font-bold text-ink">Gemini 2.5 Flash / Omni</span>
               </div>
               <div className="flex justify-between">
                 <span>Knowledge Corpus:</span>
-                <span className="font-bold text-ink dark:text-white">WHO / ICMR Maternal Guidelines</span>
+                <span className="font-bold text-ink">WHO / ICMR Maternal Guidelines</span>
               </div>
               <div className="flex justify-between">
                 <span>Languages:</span>
-                <span className="font-bold text-ink dark:text-white">English, Hindi, Kannada</span>
+                <span className="font-bold text-ink">English, Hindi, Kannada</span>
               </div>
             </div>
           </Card>

@@ -43,8 +43,16 @@ class TranslationService:
             return language
         return fallback if fallback in SUPPORTED_LANGUAGES else "en"
 
-    async def translate_text(self, text: str, target_language: str) -> str:
+    async def translate_text(self, text: str, target_language: str, source_language: str = "en") -> str:
         language = self.normalize_language(target_language)
-        if language == "en":
+        if language == "en" and source_language == "en":
             return text
-        return f"[{language}] {text}"
+        try:
+            from app.services.gemini_service import GeminiService
+
+            translated = await GeminiService().translate_text(text, language, source_language)
+            if translated:
+                return translated
+        except Exception:
+            pass
+        return text

@@ -60,5 +60,39 @@ def ensure_sqlite_schema(sync_conn) -> None:
                 sync_conn.execute(text("ALTER TABLE nutrition_care_plans ADD COLUMN archived_by_id UUID NULL"))
             if "archived_at" not in cols:
                 sync_conn.execute(text("ALTER TABLE nutrition_care_plans ADD COLUMN archived_at DATETIME NULL"))
+
+        if "users" in tables:
+            user_cols = [c[1] for c in sync_conn.execute(text("PRAGMA table_info(users)")).fetchall()]
+            if "custom_id" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN custom_id VARCHAR(64) NULL"))
+            if "medical_license" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN medical_license VARCHAR(64) NULL"))
+            if "assigned_doctor_id" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN assigned_doctor_id VARCHAR(64) NULL"))
+            if "assigned_mother_id" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN assigned_mother_id VARCHAR(64) NULL"))
+            if "age" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN age INTEGER NULL"))
+            if "specialization" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN specialization VARCHAR(120) NULL"))
+            if "qualifications" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN qualifications VARCHAR(255) NULL"))
+            if "experience_years" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN experience_years INTEGER NULL"))
+            if "hospital_clinic" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN hospital_clinic VARCHAR(255) NULL"))
+            if "relationship_label" not in user_cols:
+                sync_conn.execute(text("ALTER TABLE users ADD COLUMN relationship_label VARCHAR(80) NULL"))
+            sync_conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_custom_id ON users (custom_id) WHERE custom_id IS NOT NULL"))
+            sync_conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_medical_license ON users (medical_license) WHERE medical_license IS NOT NULL"))
+
+        if "doctor_patients" in tables:
+            sync_conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_doctor_patients_active "
+                    "ON doctor_patients (doctor_id, patient_id) "
+                    "WHERE status = 'active' AND deleted_at IS NULL"
+                )
+            )
     except Exception:
         pass

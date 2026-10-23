@@ -1,22 +1,10 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { DEFAULT_LANGUAGE, LanguageCode, SUPPORTED_LANGUAGES, translations, TranslationSchema } from "@/i18n";
-import { LanguageInfo } from "@/i18n/languages";
-
-interface LanguageContextType {
-  language: LanguageCode;
-  setLanguage: (lang: LanguageCode) => void;
-  t: TranslationSchema;
-  languages: LanguageInfo[];
-  currentLanguage: LanguageInfo;
-}
-
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
-
-const STORAGE_KEY = "nurtureher_language";
+import React, { useEffect, useMemo, useState } from "react";
+import { DEFAULT_LANGUAGE, LanguageCode, SUPPORTED_LANGUAGES, translations } from "@/i18n";
+import { LanguageContext, LANGUAGE_STORAGE_KEY } from "./language-context";
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<LanguageCode>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY) as LanguageCode | null;
+    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as LanguageCode | null;
     if (saved && SUPPORTED_LANGUAGES.some((item) => item.code === saved)) {
       return saved;
     }
@@ -25,13 +13,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const setLanguage = (lang: LanguageCode) => {
     setLanguageState(lang);
-    localStorage.setItem(STORAGE_KEY, lang);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
     document.documentElement.lang = lang;
   };
 
   useEffect(() => {
     document.documentElement.lang = language;
-    localStorage.setItem(STORAGE_KEY, language);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
   }, [language]);
 
   const t = useMemo(() => {
@@ -54,12 +42,4 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
-}
-
-export function useLanguage(): LanguageContextType {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error("useLanguage must be used within a LanguageProvider");
-  }
-  return context;
 }

@@ -226,8 +226,8 @@ export function CareCircleConnect({ onApproved }: { onApproved: (accessId: strin
       <div className="flex items-start gap-3">
         <QrCode className="mt-1 h-5 w-5 shrink-0 text-primary" />
         <div>
-          <h2 className="text-lg font-black text-ink dark:text-white">Connect to Mother</h2>
-          <p className="mt-1 text-xs leading-5 text-muted dark:text-white/60">
+          <h2 className="text-lg font-black text-ink">Connect to Mother</h2>
+          <p className="mt-1 text-xs leading-5 text-muted">
             Scan her CareCircle QR with your camera or choose an image. The QR is decoded on this device; its token is verified by NurtureHer.
           </p>
         </div>
@@ -238,7 +238,7 @@ export function CareCircleConnect({ onApproved }: { onApproved: (accessId: strin
           <Camera className="mr-2 h-4 w-4" />
           {state === "scanning" ? "Camera scanning…" : "Scan with camera"}
         </Button>
-        <label className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-2xl border border-lavender-200 bg-white px-4 py-2 text-sm font-bold text-ink transition hover:bg-lavender-50 dark:border-white/10 dark:bg-white/10 dark:text-white ${busy ? "pointer-events-none opacity-50" : ""}`}>
+        <label className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-2xl border border-lavender-200 bg-surface px-4 py-2 text-sm font-bold text-ink transition hover:bg-lavender-50 ${busy ? "pointer-events-none opacity-50" : ""}`}>
           <Upload className="mr-2 h-4 w-4" />
           Upload QR image
           <input
@@ -255,7 +255,7 @@ export function CareCircleConnect({ onApproved }: { onApproved: (accessId: strin
       </div>
 
       <form
-        className="mt-5 space-y-2 border-t border-lavender-100 pt-4 dark:border-white/10"
+        className="mt-5 space-y-2 border-t border-lavender-100 pt-4"
         onSubmit={(event) => {
           event.preventDefault();
           const scannedToken = extractToken(manualToken);
@@ -266,7 +266,7 @@ export function CareCircleConnect({ onApproved }: { onApproved: (accessId: strin
           void submitToken(scannedToken);
         }}
       >
-        <label htmlFor="carecircle-manual-token" className="block text-xs font-bold text-muted dark:text-white/70">
+        <label htmlFor="carecircle-manual-token" className="block text-xs font-bold text-muted">
           Or enter the mother's CareCircle access key
         </label>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -276,7 +276,7 @@ export function CareCircleConnect({ onApproved }: { onApproved: (accessId: strin
             onChange={(event) => setManualToken(event.target.value)}
             autoComplete="off"
             spellCheck={false}
-            className="min-h-11 min-w-0 flex-1 rounded-2xl border border-lavender-200 bg-white px-4 text-sm text-ink outline-none focus:border-primary dark:border-white/10 dark:bg-white/5 dark:text-white"
+            className="min-h-11 min-w-0 flex-1 rounded-2xl border border-lavender-200 bg-surface px-4 text-sm text-ink outline-none focus:border-primary"
             placeholder="Paste secure access key"
           />
           <Button type="submit" disabled={busy || !manualToken.trim()}>
@@ -298,7 +298,7 @@ export function CareCircleConnect({ onApproved }: { onApproved: (accessId: strin
           </Button>
       </div>
 
-      <p role="status" aria-live="polite" className={`mt-4 rounded-xl p-3 text-sm ${state === "invalid" || state === "expired" || state === "rejected" || state === "revoked" || state === "permission-denied" || state === "camera-unavailable" || state === "approved-refresh-failed" ? "bg-rose-50 text-rose-800 dark:bg-rose-950/30 dark:text-rose-200" : "bg-lavender-50 text-ink dark:bg-white/5 dark:text-white"}`}>
+      <p role="status" aria-live="polite" className={`mt-4 rounded-xl p-3 text-sm ${state === "invalid" || state === "expired" || state === "rejected" || state === "revoked" || state === "permission-denied" || state === "camera-unavailable" || state === "approved-refresh-failed" ? "bg-rose-50 text-rose-800" : "bg-lavender-50 text-ink"}`}>
         {busy && <LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" />}
         {stateMessages[state]}
       </p>

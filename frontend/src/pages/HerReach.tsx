@@ -236,7 +236,7 @@ export function HerReachPage({ defaultRoleOverride }: { defaultRoleOverride?: "m
                       }}
                       className={`flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-black transition ${
                         isSelected
-                          ? "bg-primary text-white shadow-soft"
+                          ? "bg-primary text-onbrand shadow-soft"
                           : "border border-lavender-200 bg-white text-ink hover:bg-lavender-50 dark:border-white/10 dark:bg-white/5 dark:text-white"
                       }`}
                     >
@@ -415,7 +415,7 @@ export function HerReachPage({ defaultRoleOverride }: { defaultRoleOverride?: "m
                     }}
                     className={`flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-black transition ${
                       isSelected
-                        ? "bg-secondary text-white shadow-soft"
+                        ? "bg-secondary text-onbrand shadow-soft"
                         : "border border-lavender-200 bg-white text-ink hover:bg-lavender-50 dark:border-white/10 dark:bg-card dark:text-white"
                     }`}
                   >

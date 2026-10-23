@@ -78,12 +78,24 @@ class CaregiverContentUpdate(BaseModel):
     category: str | None = Field(default=None, min_length=1, max_length=80)
 
 
+class ChatSourceRead(BaseModel):
+    id: str
+    title: str
+    kind: Literal["medical_corpus", "internal_knowledge"]
+    page: str | None = None
+    section: str | None = None
+    publisher: str | None = None
+    publication_date: str | None = None
+    source: str | None = None
+
+
 class ChatRead(ORMModel):
     id: UUID
     message: str
     response: str
     language: str
     created_at: datetime
+    sources: list[ChatSourceRead] = Field(default_factory=list)
 
 
 class CaregiverContentRead(ORMModel):

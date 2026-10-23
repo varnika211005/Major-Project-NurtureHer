@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react";
-import { api, setTokens, User } from "@/lib/api";
+import { api, hasTokens, setTokens, User, UserRole, LoginIdentifiers, RegisterPayload } from "@/lib/api";
 import { AuthContext } from "@/context/auth-context";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -7,18 +7,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!hasTokens()) {
+      setLoading(false);
+      return;
+    }
     api.me().then(setUser).catch(() => setTokens(null)).finally(() => setLoading(false));
   }, []);
 
-  async function signIn(email: string, password: string) {
-    const tokens = await api.login(email, password);
+  async function signIn(
+    email: string,
+    password: string,
+    portal?: UserRole,
+    identifiers?: LoginIdentifiers,
+  ) {
+    const tokens =
+      portal === "admin"
+        ? await api.adminLogin(email, password)
+        : await api.login(email, password, portal, identifiers);
     setTokens(tokens);
     setUser(await api.me());
   }
 
-  async function signUp(payload: { email: string; name: string; password: string; phone?: string; role?: string; preferred_language?: string }) {
-    await api.register(payload);
-    await signIn(payload.email, payload.password);
+  async function signUp(payload: RegisterPayload): Promise<User> {
+    const createdUser = await api.register(payload);
+    return createdUser;
   }
 
   async function signOut() {

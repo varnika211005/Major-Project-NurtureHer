@@ -1,4 +1,8 @@
-# Production Readiness Report
+# Production Readiness Report (Historical)
+
+> **HISTORICAL — not a current production-readiness claim.**
+>
+> This report reflects the repository on **2026-07-09**. Its test counts, Alembic head (`0002`), seed-password claims, deployment status, and dependency observations are outdated. In particular, the current seed script still has a default demo password and prints it, contrary to this report's “hardcoded seed passwords removed” statement. For current status use [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) and [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md); for setup use [`DEVELOPMENT_RUNBOOK.md`](DEVELOPMENT_RUNBOOK.md). Original content retained for history.
 
 Date: 2026-07-09
 

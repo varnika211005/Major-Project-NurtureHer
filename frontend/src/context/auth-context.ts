@@ -1,11 +1,16 @@
 import { createContext } from "react";
-import { User } from "@/lib/api";
+import { LoginIdentifiers, RegisterPayload, User, UserRole } from "@/lib/api";
 
 export type AuthContextValue = {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (payload: { email: string; name: string; password: string; phone?: string; role?: string; preferred_language?: string }) => Promise<void>;
+  signIn: (
+    email: string,
+    password: string,
+    portal?: UserRole,
+    identifiers?: LoginIdentifiers,
+  ) => Promise<void>;
+  signUp: (payload: RegisterPayload) => Promise<User | void>;
   signOut: () => Promise<void>;
 };
 

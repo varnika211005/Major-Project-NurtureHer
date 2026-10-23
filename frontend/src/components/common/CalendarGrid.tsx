@@ -25,8 +25,8 @@ export function CalendarGrid({
               "flex aspect-square items-center justify-center rounded-[18px] font-black transition",
               compact ? "text-sm" : "text-sm md:text-base",
               active
-                ? "bg-gradient-to-br from-primary to-accent text-white shadow-glow"
-                : "bg-pink-50/80 text-muted hover:bg-white hover:shadow-soft dark:bg-white/10 dark:hover:bg-white/15",
+                ? "bg-gradient-to-br from-primary to-accent text-onbrand shadow-glow"
+                : "bg-lavender-50/80 text-muted hover:bg-surface hover:shadow-soft",
             )}
           >
             {day <= monthDays ? day : ""}

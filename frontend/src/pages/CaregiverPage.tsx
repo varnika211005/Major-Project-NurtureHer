@@ -1,15 +1,46 @@
-import { AlertTriangle, Baby, CheckCircle2, Compass, ExternalLink, Heart, LocateFixed, Lock, MapPin, Navigation, Phone, PhoneCall, QrCode, RefreshCw, Search, ShieldAlert, UserCheck, Video, X } from "lucide-react";
+import { AlertTriangle, Baby, BookOpen, CheckCircle2, Clock, Compass, Download, ExternalLink, HardDrive, Heart, Info, LocateFixed, Lock, MapPin, Navigation, Phone, PhoneCall, Play, PlayCircle, QrCode, RefreshCw, Search, ShieldAlert, Trash2, UserCheck, Video, Wifi, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { CareCircleConnect } from "@/components/CareCircleConnect";
-import { api, CaregiverContent, ChatMessage, FacilityItem, OfficialHelpline } from "@/lib/api";
+import { api, CaregiverContent, ChatMessage, EducationalResource, FacilityItem, OfficialHelpline } from "@/lib/api";
+import {
+  OfflineResourceRecord,
+  downloadVideoForOffline,
+  getAllOfflineRecords,
+  removeOfflineResource,
+  saveArticleForOffline,
+} from "@/lib/offlineLibraryStore";
 import { Page } from "@/components/common/Page";
 import { SectionHeader } from "@/components/common/Premium";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/common/States";
+import { useContext } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LanguageContext, LANGUAGE_STORAGE_KEY } from "@/context/language-context";
+
+const OBSOLETE_VIDEO_URLS = [
+  "maternal_warning_signs.mp4",
+  "newborn_latch_basics.mp4",
+  "prenatal_breathing_exercise.mp4",
+  "trimester1_care_guide.mp4",
+];
+
+function isObsoleteVideoUrl(url?: string | null): boolean {
+  if (!url) return false;
+  return OBSOLETE_VIDEO_URLS.some((obs) => url.includes(obs));
+}
+
+function useCurrentLanguageSafe(): string {
+  const context = useContext(LanguageContext);
+  if (context?.language) return context.language;
+  if (typeof localStorage !== "undefined") {
+    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) || localStorage.getItem("app_language");
+    if (saved) return saved;
+  }
+  return "en";
+}
 
 type CaregiverConnection = {
   access_id: string;
@@ -20,8 +51,26 @@ type CaregiverConnection = {
 };
 
 export function CaregiverPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const language = useCurrentLanguageSafe();
   const [items, setItems] = useState<CaregiverContent[]>([]);
+  const [availableVideos, setAvailableVideos] = useState<EducationalResource[]>([]);
+  const [educationalVideo, setEducationalVideo] = useState<EducationalResource | null>(null);
+  const [educationalArticle, setEducationalArticle] = useState<EducationalResource | null>(null);
+  const [offlineRecords, setOfflineRecords] = useState<OfflineResourceRecord[]>([]);
+  const [downloadTasks, setDownloadTasks] = useState<Record<string, { progress: number; controller: AbortController }>>({});
+  const [playingVideo, setPlayingVideo] = useState<{
+    resource?: EducationalResource;
+    offlineRecord?: OfflineResourceRecord;
+    blobUrl?: string;
+  } | null>(null);
+  const [readingArticle, setReadingArticle] = useState<{
+    resource?: EducationalResource;
+    offlineRecord?: OfflineResourceRecord;
+  } | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+
   const [connections, setConnections] = useState<CaregiverConnection[]>([]);
   const [sharedSummary, setSharedSummary] = useState<Record<string, unknown> | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
@@ -31,6 +80,19 @@ export function CaregiverPage() {
     searchParams.get("tab") === "connect" ? "connect" : "education",
   );
   const [loading, setLoading] = useState(true);
+
+  const offlineMap = new Map<string, OfflineResourceRecord>(offlineRecords.map((r) => [r.id, r]));
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("tab") === "connect") setActiveTab("connect");
@@ -49,14 +111,60 @@ export function CaregiverPage() {
     async function loadCaregiverData() {
       setLoading(true);
       try {
-        const [videoGroup, tipGroup, articleGroup, conns] = await Promise.all([
-          api.caregiver("videos").catch(() => []),
-          api.caregiver("tips").catch(() => []),
-          api.caregiver("articles").catch(() => []),
+        const [educationalResources, conns, offlineRecs] = await Promise.all([
+          api.educationResources().catch(() => [] as EducationalResource[]),
           api.careCircleConnections().catch(() => []),
+          getAllOfflineRecords().catch(() => [] as OfflineResourceRecord[]),
         ]);
-        setItems([...videoGroup, ...tipGroup, ...articleGroup]);
+        setOfflineRecords(offlineRecs);
         setConnections(conns);
+
+        const publishedVideos = educationalResources.filter(
+          (r) => r.content_type === "video" && r.is_published,
+        );
+        const publishedArticles = educationalResources.filter(
+          (r) => r.content_type === "article" && r.is_published,
+        );
+        setAvailableVideos(publishedVideos);
+
+        // Card A: Caregiver Educational Video
+        // Default English preference resolves strictly to NurtureHer-English.mp4
+        // Regional languages resolve to the corresponding intended multilingual video
+        const activeLang = (language || "en").toLowerCase();
+        let video =
+          publishedVideos.find((v) => v.language && v.language.toLowerCase() === activeLang) ||
+          publishedVideos.find((v) => v.video_url?.includes("NurtureHer-English.mp4")) ||
+          publishedVideos.find((v) => v.language && v.language.toLowerCase() === "en") ||
+          publishedVideos[0] ||
+          null;
+
+        // Card B: Caregiver Educational Article
+        // Prioritize Postpartum recovery, Newborn care, or Emergency warning signs
+        let article =
+          publishedArticles.find(
+            (a) =>
+              a.category.toLowerCase().includes("postpartum") ||
+              a.category.toLowerCase().includes("newborn") ||
+              a.category.toLowerCase().includes("warning"),
+          ) ||
+          publishedArticles[0] ||
+          null;
+
+        // Offline fallback if network is unavailable
+        if (!video && offlineRecs.length > 0) {
+          const offlineVid = offlineRecs.find(
+            (r) => r.content_type === "video" && !isObsoleteVideoUrl(r.video_url),
+          );
+          if (offlineVid) video = offlineVid as unknown as EducationalResource;
+        }
+        if (!article && offlineRecs.length > 0) {
+          const offlineArt = offlineRecs.find((r) => r.content_type === "article");
+          if (offlineArt) article = offlineArt as unknown as EducationalResource;
+        }
+
+        setEducationalVideo(video);
+        setEducationalArticle(article);
+
         if (conns.length > 0) {
           setSelectedConnection(conns[0].access_id);
           const summary = await api.careCircleSharedSummary(conns[0].access_id).catch(() => null);
@@ -69,6 +177,104 @@ export function CaregiverPage() {
     }
     void loadCaregiverData();
   }, []);
+
+  // Update educational video dynamically when application language preference changes
+  useEffect(() => {
+    if (availableVideos.length === 0) return;
+    const activeLang = (language || "en").toLowerCase();
+    const matched =
+      availableVideos.find((v) => v.language && v.language.toLowerCase() === activeLang) ||
+      availableVideos.find((v) => v.video_url?.includes("NurtureHer-English.mp4")) ||
+      availableVideos.find((v) => v.language && v.language.toLowerCase() === "en") ||
+      availableVideos[0];
+    if (matched) {
+      setEducationalVideo(matched);
+    }
+  }, [language, availableVideos]);
+
+  const handleDownloadVideo = async (resource: EducationalResource) => {
+    const controller = new AbortController();
+    setDownloadTasks((prev) => ({
+      ...prev,
+      [resource.id]: { progress: 0, controller },
+    }));
+
+    try {
+      await downloadVideoForOffline(
+        resource,
+        (pct) => {
+          setDownloadTasks((prev) => {
+            if (!prev[resource.id]) return prev;
+            return {
+              ...prev,
+              [resource.id]: { ...prev[resource.id], progress: pct },
+            };
+          });
+        },
+        controller.signal,
+      );
+
+      const refreshed = await getAllOfflineRecords();
+      setOfflineRecords(refreshed);
+    } catch {
+      // Abort or error handled in store
+    } finally {
+      setDownloadTasks((prev) => {
+        const updated = { ...prev };
+        delete updated[resource.id];
+        return updated;
+      });
+    }
+  };
+
+  const handleCancelDownload = (resourceId: string) => {
+    const task = downloadTasks[resourceId];
+    if (task) {
+      task.controller.abort();
+    }
+  };
+
+  const handleSaveArticle = async (resource: EducationalResource) => {
+    try {
+      await saveArticleForOffline(resource);
+      const refreshed = await getAllOfflineRecords();
+      setOfflineRecords(refreshed);
+    } catch {
+      // Storage error
+    }
+  };
+
+  const handleRemoveOffline = async (resourceId: string) => {
+    await removeOfflineResource(resourceId);
+    const refreshed = await getAllOfflineRecords();
+    setOfflineRecords(refreshed);
+  };
+
+  const handlePlayVideo = (resource: EducationalResource) => {
+    const offlineRec = offlineMap.get(resource.id);
+    if (offlineRec?.video_blob && !isObsoleteVideoUrl(offlineRec.video_url)) {
+      const blobUrl = URL.createObjectURL(offlineRec.video_blob);
+      setPlayingVideo({ resource, offlineRecord: offlineRec, blobUrl });
+    } else {
+      setPlayingVideo({ resource });
+    }
+  };
+
+  const closeVideoPlayer = () => {
+    if (playingVideo?.blobUrl) {
+      URL.revokeObjectURL(playingVideo.blobUrl);
+    }
+    setPlayingVideo(null);
+  };
+
+  const handleReadArticle = (resource: EducationalResource) => {
+    const offlineRec = offlineMap.get(resource.id);
+    setReadingArticle({ resource, offlineRecord: offlineRec });
+  };
+
+  const closeArticleReader = () => {
+    setReadingArticle(null);
+  };
 
   async function loadSharedChatHistory(accessId: string) {
     setChatHistory(null);
@@ -262,21 +468,257 @@ export function CaregiverPage() {
                 </div>
               </Card>
 
-              {/* Educational Cards */}
-              <div className="grid gap-5 md:grid-cols-3">
-                {items.map((item) => (
-                  <Card key={item.id} className="relative overflow-hidden">
-                    <Badge className="mb-2">{item.category.toUpperCase()}</Badge>
-                    <h3 className="text-base font-black text-ink dark:text-white">{item.title}</h3>
-                    <p className="mt-2 text-xs leading-5 text-muted dark:text-white/60">{item.description}</p>
-                    {item.video_url && (
-                      <div className="mt-4 flex items-center gap-2 text-xs font-bold text-primary">
-                        <Video className="h-4 w-4" /> Video Resource Included
-                      </div>
-                    )}
-                  </Card>
-                ))}
+              {/* Educational Resource Header & Explore All Actions */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                <div>
+                  <h3 className="text-lg font-black text-ink dark:text-white flex items-center gap-2">
+                    <Baby className="h-5 w-5 text-primary" />
+                    Caregiver Guides & Educational Resources
+                  </h3>
+                  <p className="mt-0.5 text-xs text-muted">
+                    Clinically verified video demonstrations and postpartum care articles with offline access for partners and caregivers.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="gap-1.5 text-xs font-bold"
+                    onClick={() => navigate("/offline-library")}
+                    title="View all saved resources in My Offline Library"
+                  >
+                    <HardDrive className="h-3.5 w-3.5 text-primary" />
+                    My Offline Library
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="gap-1.5 text-xs font-bold"
+                    onClick={() => navigate("/library")}
+                    title="Browse complete catalog of maternal videos and articles"
+                  >
+                    Explore All Educational Resources →
+                  </Button>
+                </div>
               </div>
+
+              {/* Exactly Two Educational Cards: Card A (Video) & Card B (Article) */}
+              {!educationalVideo && !educationalArticle ? (
+                <EmptyState
+                  title="No Educational Resources Available"
+                  text="No published educational guides or videos were found at this time."
+                />
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* CARD A — EDUCATIONAL VIDEO */}
+                  {educationalVideo && (() => {
+                    const isOfflineSaved = offlineMap.has(educationalVideo.id);
+                    const activeTask = downloadTasks[educationalVideo.id];
+
+                    return (
+                      <Card className="group relative flex flex-col overflow-hidden rounded-2xl border border-lavender-200/80 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5">
+                        {/* Header Badges */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+                            <Video className="h-3.5 w-3.5" />
+                            {educationalVideo.category}
+                          </span>
+                          {isOfflineSaved ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Stored Locally
+                            </span>
+                          ) : activeTask ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                              Downloading {activeTask.progress}%
+                            </span>
+                          ) : isOnline ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-muted">
+                              <Wifi className="h-3 w-3" /> Available Online
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-amber-500">
+                              Requires Internet
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Title & Description */}
+                        <h4 className="mt-3 text-base font-black text-ink dark:text-white line-clamp-2">
+                          {educationalVideo.title}
+                        </h4>
+                        <p className="mt-2 text-xs leading-5 text-muted dark:text-white/60 line-clamp-3 flex-1">
+                          {educationalVideo.description}
+                        </p>
+
+                        {/* Metadata row: duration, file size, publisher */}
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-lavender-100 pt-3 text-[11px] text-muted dark:border-white/10">
+                          <span className="flex items-center gap-1 truncate max-w-[180px]">
+                            {educationalVideo.author_publisher || "Clinical Advisory"}
+                          </span>
+                          <div className="flex items-center gap-3">
+                            {educationalVideo.duration_seconds && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatDuration(educationalVideo.duration_seconds)}
+                              </span>
+                            )}
+                            {educationalVideo.file_size_bytes && (
+                              <span className="flex items-center gap-1">
+                                <HardDrive className="h-3 w-3" />
+                                {formatBytes(educationalVideo.file_size_bytes)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Download Progress Bar */}
+                        {activeTask && (
+                          <div className="mt-3 space-y-1">
+                            <div className="flex justify-between text-[11px] text-muted">
+                              <span>Downloading permitted video file...</span>
+                              <span className="font-semibold text-primary">{activeTask.progress}%</span>
+                            </div>
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-lavender-100 dark:bg-white/10">
+                              <div
+                                className="h-full bg-primary transition-all duration-200"
+                                style={{ width: `${activeTask.progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Card Action Buttons */}
+                        <div className="mt-4 flex items-center gap-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="flex-1 gap-1.5"
+                            onClick={() => handlePlayVideo(educationalVideo)}
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                            {isOfflineSaved ? "Play Offline" : "Watch Online"}
+                          </Button>
+
+                          {isOfflineSaved ? (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="text-rose-500 hover:text-rose-600 dark:hover:bg-rose-950/30"
+                              onClick={() => handleRemoveOffline(educationalVideo.id)}
+                              title="Delete downloaded video from device"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : activeTask ? (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleCancelDownload(educationalVideo.id)}
+                              title="Cancel download"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="gap-1.5"
+                              onClick={() => handleDownloadVideo(educationalVideo)}
+                              disabled={!isOnline}
+                              title={!isOnline ? "Connect to internet to download" : "Download video for offline viewing"}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              Download
+                            </Button>
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* CARD B — EDUCATIONAL ARTICLE */}
+                  {educationalArticle && (() => {
+                    const isOfflineSaved = offlineMap.has(educationalArticle.id);
+
+                    return (
+                      <Card className="group relative flex flex-col overflow-hidden rounded-2xl border border-lavender-200/80 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5">
+                        {/* Header Badges */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-bold text-accent">
+                            <BookOpen className="h-3.5 w-3.5" />
+                            {educationalArticle.category}
+                          </span>
+                          {isOfflineSaved ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Saved Offline
+                            </span>
+                          ) : isOnline ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-muted">
+                              <Wifi className="h-3 w-3" /> Available Online
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-amber-500">
+                              Requires Internet
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Title & Description */}
+                        <h4 className="mt-3 text-base font-black text-ink dark:text-white line-clamp-2">
+                          {educationalArticle.title}
+                        </h4>
+                        <p className="mt-2 text-xs leading-5 text-muted dark:text-white/60 line-clamp-3 flex-1">
+                          {educationalArticle.description}
+                        </p>
+
+                        {/* Metadata row: publisher, review date */}
+                        <div className="mt-4 flex items-center justify-between border-t border-lavender-100 pt-3 text-[11px] text-muted dark:border-white/10">
+                          <span className="truncate max-w-[180px]">
+                            {educationalArticle.author_publisher || "Medical Advisory"}
+                          </span>
+                          <span>{educationalArticle.review_date || "Current Guidance"}</span>
+                        </div>
+
+                        {/* Card Action Buttons */}
+                        <div className="mt-4 flex items-center gap-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="flex-1 gap-1.5"
+                            onClick={() => handleReadArticle(educationalArticle)}
+                          >
+                            <BookOpen className="h-3.5 w-3.5" />
+                            Read Article
+                          </Button>
+
+                          {isOfflineSaved ? (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="text-rose-500 hover:text-rose-600"
+                              onClick={() => handleRemoveOffline(educationalArticle.id)}
+                              title="Remove saved article from offline storage"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="gap-1.5"
+                              onClick={() => handleSaveArticle(educationalArticle)}
+                              title="Save article for offline reading"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              Save Offline
+                            </Button>
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
 
@@ -576,8 +1018,144 @@ export function CaregiverPage() {
           {activeTab === "herreach" && <CaregiverHerReachView />}
         </>
       )}
+      {/* VIDEO PLAYER MODAL */}
+      {playingVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900 border border-border/40 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b border-border/40 px-5 py-3.5 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <PlayCircle className="h-4 w-4" />
+                </span>
+                <span className="text-xs font-bold text-ink dark:text-white truncate max-w-sm">
+                  {playingVideo.resource?.title || playingVideo.offlineRecord?.title}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={closeVideoPlayer}
+                className="rounded-lg p-1.5 text-muted hover:bg-lavender-50 hover:text-ink dark:hover:bg-white/10"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="relative aspect-video w-full bg-black">
+              <video
+                controls
+                autoPlay
+                playsInline
+                src={playingVideo.blobUrl || playingVideo.resource?.video_url || ""}
+                className="h-full w-full object-contain"
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <div className="p-4 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-primary">
+                  {playingVideo.resource?.category || playingVideo.offlineRecord?.category}
+                </span>
+                {playingVideo.blobUrl ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Playing from Local Offline Storage
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-muted">
+                    <Wifi className="h-3.5 w-3.5" /> Streaming Online
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted leading-relaxed">
+                {playingVideo.resource?.description || playingVideo.offlineRecord?.description}
+              </p>
+              <div className="rounded-xl bg-lavender-50/60 p-2.5 text-[11px] text-muted dark:bg-white/5 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Caregiver Clinical Advisory:</strong> This video provides supportive guidance for maternal healing and newborn care. For active danger signs or emergencies, immediately call emergency medical services (112 / 108).
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ARTICLE READER MODAL */}
+      {readingArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900 border border-border/40 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b border-border/40 px-6 py-4 dark:border-slate-800">
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                  {readingArticle.resource?.category || readingArticle.offlineRecord?.category}
+                </span>
+                <h2 className="text-base font-bold text-ink dark:text-white line-clamp-1">
+                  {readingArticle.resource?.title || readingArticle.offlineRecord?.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeArticleReader}
+                className="rounded-lg p-1.5 text-muted hover:bg-lavender-50 hover:text-ink dark:hover:bg-white/10"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex items-center justify-between rounded-xl bg-lavender-50/70 px-3.5 py-2 text-xs text-muted dark:bg-white/5">
+                <span>
+                  By: <strong>{readingArticle.resource?.author_publisher || readingArticle.offlineRecord?.author_publisher}</strong>
+                </span>
+                <span>Reviewed: {readingArticle.resource?.review_date || readingArticle.offlineRecord?.review_date}</span>
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none text-ink dark:text-slate-200 whitespace-pre-wrap font-sans leading-relaxed text-sm">
+                {readingArticle.resource?.article_content || readingArticle.offlineRecord?.article_content}
+              </div>
+              {((readingArticle.resource?.sources_json || readingArticle.offlineRecord?.sources_json)) && (
+                <div className="mt-6 rounded-2xl border border-lavender-200/80 bg-lavender-50/50 p-4 text-xs dark:bg-white/5 dark:border-white/10">
+                  <h4 className="font-bold text-ink dark:text-white flex items-center gap-1.5">
+                    <Info className="h-4 w-4 text-primary" /> Medical References & Review Standards
+                  </h4>
+                  <ul className="mt-2 list-disc list-inside space-y-1 text-muted text-[11px]">
+                    {(() => {
+                      try {
+                        const raw = readingArticle.resource?.sources_json || readingArticle.offlineRecord?.sources_json;
+                        const parsed = JSON.parse(raw || "[]");
+                        return parsed.map((src: string, idx: number) => <li key={idx}>{src}</li>);
+                      } catch {
+                        return <li>Clinical Practice Standards</li>;
+                      }
+                    })()}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between border-t border-border/40 px-6 py-3.5 text-xs text-muted dark:border-slate-800 bg-surface dark:bg-slate-900/50">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Medically Reviewed Caregiver Guide
+              </span>
+              <Button size="sm" variant="primary" onClick={closeArticleReader}>
+                Done Reading
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Page>
   );
+}
+
+function formatBytes(bytes?: number): string {
+  if (!bytes || bytes <= 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDuration(seconds?: number): string {
+  if (!seconds || seconds <= 0) return "";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 const CAREGIVER_FACILITY_CATEGORIES = [

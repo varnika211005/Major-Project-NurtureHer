@@ -38,6 +38,8 @@ async def get_current_user(
         raise AppError("Inactive or missing user", status.HTTP_401_UNAUTHORIZED) from exc
     if not user or not user.is_active:
         raise AppError("Inactive or missing user", status.HTTP_401_UNAUTHORIZED)
+    if user.role == UserRole.DOCTOR and not user.is_verified:
+        raise AppError("Doctor account pending verification", status.HTTP_403_FORBIDDEN)
     return user
 
 

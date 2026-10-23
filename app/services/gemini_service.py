@@ -91,6 +91,48 @@ class GeminiService:
             logger.warning("Gemini query translation failed (%s->en): %s", source_language, exc)
         return None
 
+    async def translate_text(self, text: str, target_language: str, source_language: str = "en") -> str | None:
+        """Translate health guidance into the target language preserving medical accuracy and citations."""
+        if not self.api_key or self.api_key == "change-me":
+            return None
+        target_name = {
+            "kn": "Kannada",
+            "hi": "Hindi",
+            "ta": "Tamil",
+            "te": "Telugu",
+            "ml": "Malayalam",
+            "en": "English",
+        }.get(target_language, target_language)
+        instruction = (
+            f"Translate the following maternal health guidance text into {target_name}. "
+            "Preserve all medical terminology, disclaimers, warnings, and source citations exactly as formatted (e.g., [source:...]). "
+            "Do not add speculative clinical advice. Reply with only the translated text.\n\n"
+            f"Text: {text}"
+        )
+        payload = {
+            "contents": [{"parts": [{"text": instruction}]}],
+            "generationConfig": {"temperature": 0.0, "maxOutputTokens": 1024},
+        }
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                response = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent",
+                    params={"key": self.api_key},
+                    json=payload,
+                )
+                response.raise_for_status()
+                data = response.json()
+                candidates = data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    parts = candidates[0]["content"].get("parts", [])
+                    if parts and "text" in parts[0]:
+                        res = parts[0]["text"].strip()
+                        if res:
+                            return res
+        except Exception as exc:
+            logger.warning("Gemini text translation failed (->%s): %s", target_language, exc)
+        return None
+
     def _fallback_response(self, prompt: str, language: str) -> str:
         retrieved_section = ""
         user_section = ""

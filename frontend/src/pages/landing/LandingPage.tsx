@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/context/useLanguage";
+import { useTheme } from "@/theme/useTheme";
 import "./landing.css";
 import {
   BUBBLES,
@@ -24,16 +25,6 @@ import {
 } from "./landingContent";
 import { ChatButton, Demo, Faq, FinalCta, Guides, MenuOverlay, SiteFooter, TalkModal, Voices } from "./LandingSections2";
 import { Hero, Marquee, Platform, SiteHeader, Why, type Headline, type HeadWord } from "./LandingSections";
-
-const LANDING_THEME_KEY = "nurtureher_landing_theme";
-
-function readStoredTheme(): boolean {
-  try {
-    return window.localStorage.getItem(LANDING_THEME_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
 
 const SEEN_IDS = ["marq", "why", "platform", "demo", "guides", "voices", "faq", "cta"];
 
@@ -56,7 +47,9 @@ export default function LandingPage() {
   const t: LandingDict = LANDING_DICT[lang];
   const indic = lang !== "en";
 
-  const [dark, setDark] = useState<boolean>(readStoredTheme);
+  const { theme: themeMode, toggleTheme } = useTheme();
+  const dark = themeMode === "dark";
+
   const [scrolled, setScrolled] = useState(false);
   const [seen, setSeen] = useState<Record<string, boolean>>({});
   const [whyIdx, setWhyIdx] = useState(0);
@@ -83,18 +76,6 @@ export default function LandingPage() {
 
   const tickingRef = useRef(false);
   const wheelLockRef = useRef(0);
-
-  const toggleTheme = useCallback(() => {
-    setDark((prev) => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem(LANDING_THEME_KEY, next ? "1" : "0");
-      } catch {
-        /* storage unavailable — theme still applies for this visit */
-      }
-      return next;
-    });
-  }, []);
 
   const measure = useCallback(() => {
     const vh = window.innerHeight || 800;
@@ -465,6 +446,7 @@ export default function LandingPage() {
 
       <Hero
         pill={t.pill}
+        exploreDemoLabel={t.exploreDemo}
         heroWords={heroWords}
         heroLead={t.heroLead}
         getStartedLabel={t.getStarted}

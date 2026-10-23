@@ -61,3 +61,8 @@ Thumbs.db
 # Untracked local artifacts (audit-approved 2026-10-19)
 data/
 celerybeat-schedule
+
+# Temporary verification scripts
+scripts/verify_*.py
+scripts/test_education_api.py
+scripts/update_nav.py

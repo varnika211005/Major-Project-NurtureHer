@@ -1,16 +1,19 @@
+import json
+from datetime import datetime, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import desc, select
+from sqlalchemy import and_, desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import PaginationParams, pagination_params, require_roles
 from app.core.database import get_db
 from app.core.security import UserRole
 from app.models.asha import HighRiskCase
+from app.models.audit import AuditLog
 from app.models.carecircle import CareCircleAccess
 from app.models.chat import ChatMessage
-from app.models.doctor import DoctorNote
+from app.models.doctor import DoctorNote, DoctorPatient
 from app.models.enums import CaseStatus
 from app.models.pcos import PCOSPrediction
 from app.models.ppd import PPDAssessment
@@ -37,6 +40,12 @@ class DoctorNoteRead(BaseModel):
     created_at: str
 
 
+class PatientAssignRequest(BaseModel):
+    patient_id: UUID | None = None
+    mother_id: str | None = None
+    doctor_id: UUID | None = None  # Admin only can specify a different doctor_id
+
+
 async def _get_authorized_patient(
     doctor: User,
     patient_id: UUID,
@@ -55,6 +64,17 @@ async def _get_authorized_patient(
     if doctor.role == UserRole.ADMIN:
         return patient, None
 
+    # Check active doctor-patient assignment (authoritative)
+    dp = await db.scalar(
+        select(DoctorPatient).where(
+            DoctorPatient.doctor_id == doctor.id,
+            DoctorPatient.patient_id == patient.id,
+            DoctorPatient.status == "active",
+            DoctorPatient.deleted_at.is_(None),
+        )
+    )
+
+    # Check approved CareCircle access
     access = await db.scalar(
         select(CareCircleAccess).where(
             CareCircleAccess.user_id == patient.id,
@@ -63,7 +83,7 @@ async def _get_authorized_patient(
             CareCircleAccess.revoked_at.is_(None),
         )
     )
-    if not access:
+    if not dp and not access:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
     return patient, access
 
@@ -73,7 +93,7 @@ async def list_patients(
     doctor: User = doctor_or_admin,
     db: AsyncSession = Depends(get_db),
 ):
-    """List mothers with an approved CareCircle authorization for this doctor."""
+    """List mothers with an active doctor-patient assignment or approved CareCircle authorization for this doctor."""
     if doctor.role == UserRole.ADMIN:
         stmt = (
             select(User, MotherProfile)
@@ -86,14 +106,32 @@ async def list_patients(
     else:
         stmt = (
             select(User, MotherProfile, CareCircleAccess)
-            .join(CareCircleAccess, CareCircleAccess.user_id == User.id)
+            .outerjoin(
+                DoctorPatient,
+                and_(
+                    DoctorPatient.patient_id == User.id,
+                    DoctorPatient.doctor_id == doctor.id,
+                    DoctorPatient.status == "active",
+                    DoctorPatient.deleted_at.is_(None),
+                ),
+            )
+            .outerjoin(
+                CareCircleAccess,
+                and_(
+                    CareCircleAccess.user_id == User.id,
+                    CareCircleAccess.requester_id == doctor.id,
+                    CareCircleAccess.status == "approved",
+                    CareCircleAccess.revoked_at.is_(None),
+                ),
+            )
             .outerjoin(MotherProfile, MotherProfile.user_id == User.id)
             .where(
                 User.role == UserRole.MOTHER,
                 User.is_active.is_(True),
-                CareCircleAccess.requester_id == doctor.id,
-                CareCircleAccess.status == "approved",
-                CareCircleAccess.revoked_at.is_(None),
+                or_(
+                    DoctorPatient.id.is_not(None),
+                    CareCircleAccess.id.is_not(None),
+                ),
             )
             .order_by(desc(User.created_at))
         )
@@ -227,7 +265,7 @@ async def get_patient_chat_history(
 ):
     """Assigned doctor views a patient's AI chat history when the mother consented."""
     patient, access = await _get_authorized_patient(doctor, patient_id, db)
-    if access is not None and not access.share_chat_history:
+    if doctor.role != UserRole.ADMIN and (access is None or not access.share_chat_history):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chat history sharing is not consented")
     chats = (
         await db.execute(
@@ -264,11 +302,17 @@ async def list_escalations(
         .limit(50)
     )
     if doctor.role != UserRole.ADMIN:
-        authorized = select(CareCircleAccess.user_id).where(
+        assigned_patients = select(DoctorPatient.patient_id).where(
+            DoctorPatient.doctor_id == doctor.id,
+            DoctorPatient.status == "active",
+            DoctorPatient.deleted_at.is_(None),
+        )
+        consented_patients = select(CareCircleAccess.user_id).where(
             CareCircleAccess.requester_id == doctor.id,
             CareCircleAccess.status == "approved",
             CareCircleAccess.revoked_at.is_(None),
         )
+        authorized = assigned_patients.union(consented_patients)
         stmt = stmt.where(HighRiskCase.user_id.in_(authorized))
     queue = []
     for case, mother in (await db.execute(stmt)).all():
@@ -282,3 +326,168 @@ async def list_escalations(
             "created_at": case.created_at.isoformat(),
         })
     return queue
+
+
+@router.post("/patients/assign")
+async def assign_patient_to_doctor(
+    payload: PatientAssignRequest,
+    doctor: User = doctor_or_admin,
+    db: AsyncSession = Depends(get_db),
+):
+    """Assign a patient to a doctor. Doctors can assign to themselves; Admins can assign to any verified doctor."""
+    target_doctor_id = doctor.id
+    if doctor.role == UserRole.ADMIN and payload.doctor_id:
+        target_doctor_id = payload.doctor_id
+
+    target_doctor = await db.scalar(
+        select(User).where(
+            User.id == target_doctor_id,
+            User.role == UserRole.DOCTOR,
+        )
+    )
+    if not target_doctor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+    if not target_doctor.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Doctor account is inactive")
+    if not target_doctor.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Doctor account is pending verification and cannot accept patients",
+        )
+
+    patient = None
+    if payload.patient_id:
+        patient = await db.scalar(
+            select(User).where(
+                User.id == payload.patient_id,
+                User.role == UserRole.MOTHER,
+                User.is_active.is_(True),
+            )
+        )
+    elif payload.mother_id and payload.mother_id.strip():
+        m_term = payload.mother_id.strip()
+        conditions = [
+            User.custom_id == m_term,
+            User.custom_id == m_term.upper(),
+            User.email == m_term.lower(),
+        ]
+        try:
+            conditions.append(User.id == UUID(m_term))
+        except (ValueError, AttributeError):
+            pass
+        patient = await db.scalar(
+            select(User).where(
+                User.role == UserRole.MOTHER,
+                User.is_active.is_(True),
+                or_(*conditions),
+            )
+        )
+
+    if not patient:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found or inactive")
+
+    # Check for existing active assignment to prevent duplicates
+    existing_active = await db.scalar(
+        select(DoctorPatient).where(
+            DoctorPatient.doctor_id == target_doctor_id,
+            DoctorPatient.patient_id == patient.id,
+            DoctorPatient.status == "active",
+            DoctorPatient.deleted_at.is_(None),
+        )
+    )
+    if existing_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Patient is already actively assigned to this doctor",
+        )
+
+    # If there is an existing completed/inactive assignment, reactivate it
+    existing_record = await db.scalar(
+        select(DoctorPatient).where(
+            DoctorPatient.doctor_id == target_doctor_id,
+            DoctorPatient.patient_id == patient.id,
+        ).order_by(desc(DoctorPatient.created_at)).limit(1)
+    )
+    if existing_record and existing_record.status != "active":
+        existing_record.status = "active"
+        existing_record.deleted_at = None
+        existing_record.updated_at = datetime.now(timezone.utc)
+        assignment = existing_record
+    else:
+        assignment = DoctorPatient(
+            doctor_id=target_doctor_id,
+            patient_id=patient.id,
+            status="active",
+        )
+        db.add(assignment)
+
+    audit = AuditLog(
+        user_id=doctor.id,
+        action="ASSIGN_PATIENT",
+        resource=f"/doctor/patients/{patient.id}/assign",
+        metadata_json=json.dumps({
+            "doctor_id": str(target_doctor_id),
+            "patient_id": str(patient.id),
+            "assigned_by": str(doctor.id),
+        }),
+    )
+    db.add(audit)
+
+    await db.commit()
+    await db.refresh(assignment)
+
+    return {
+        "message": "Patient successfully assigned",
+        "assignment_id": str(assignment.id),
+        "doctor_id": str(target_doctor_id),
+        "patient_id": str(patient.id),
+        "patient_name": patient.name,
+        "status": assignment.status,
+    }
+
+
+@router.post("/patients/{patient_id}/end-care")
+async def end_patient_care(
+    patient_id: UUID,
+    doctor: User = doctor_or_admin,
+    db: AsyncSession = Depends(get_db),
+):
+    """End care for an assigned patient."""
+    stmt = select(DoctorPatient).where(
+        DoctorPatient.patient_id == patient_id,
+        DoctorPatient.status == "active",
+        DoctorPatient.deleted_at.is_(None),
+    )
+    if doctor.role != UserRole.ADMIN:
+        stmt = stmt.where(DoctorPatient.doctor_id == doctor.id)
+
+    assignment = await db.scalar(stmt)
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active doctor-patient assignment not found",
+        )
+
+    assignment.status = "completed"
+    assignment.deleted_at = datetime.now(timezone.utc)
+    assignment.updated_at = datetime.now(timezone.utc)
+
+    audit = AuditLog(
+        user_id=doctor.id,
+        action="END_PATIENT_CARE",
+        resource=f"/doctor/patients/{patient_id}/end-care",
+        metadata_json=json.dumps({
+            "assignment_id": str(assignment.id),
+            "doctor_id": str(assignment.doctor_id),
+            "patient_id": str(patient_id),
+            "ended_by": str(doctor.id),
+        }),
+    )
+    db.add(audit)
+
+    await db.commit()
+    return {
+        "message": "Patient care ended successfully",
+        "assignment_id": str(assignment.id),
+        "status": "completed",
+    }

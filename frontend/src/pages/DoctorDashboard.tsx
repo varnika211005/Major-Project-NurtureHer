@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { api, ChatMessage, DoctorPatientItem, FacilityItem, OfficialHelpline } from "@/lib/api";
+import { formatDate, formatDateTime } from "@/lib/locale";
 import { generatePrintableReportWindow } from "@/lib/reportPdf";
 import { Page } from "@/components/common/Page";
 import { SectionHeader } from "@/components/common/Premium";
@@ -175,7 +176,7 @@ export function DoctorDashboard() {
         ...patient.pcos_screenings.map((p) => ({
           title: "PCOS Risk Assessment",
           type: "PCOS",
-          date: new Date(p.created_at).toLocaleDateString(),
+          date: formatDate(p.created_at),
           risk_level: p.risk_level,
           score: p.probability === undefined ? `${p.risk_level} risk category` : `${Math.round(p.probability * 100)}% risk probability`,
           recommendations: p.recommendations,
@@ -183,7 +184,7 @@ export function DoctorDashboard() {
         ...patient.ppd_screenings.map((d) => ({
           title: "Postpartum Depression Screening (EPDS)",
           type: "PPD",
-          date: new Date(d.created_at).toLocaleDateString(),
+          date: formatDate(d.created_at),
           risk_level: d.risk_level,
           score: d.epds_score === undefined ? `${d.risk_level} risk category` : `EPDS Score: ${d.epds_score}/30`,
           sentiment: d.sentiment,
@@ -200,7 +201,7 @@ export function DoctorDashboard() {
       subtitle="Comprehensive clinical triage, longitudinal patient telemetry, and consultation records for maternal health providers."
     >
       {/* Medical Disclaimer Banner */}
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs leading-relaxed text-lavender-900 shadow-sm dark:border-lavender-800/40 dark:bg-lavender-950/40 dark:text-lavender-200">
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs leading-relaxed text-lavender-900 shadow-sm">
         <Stethoscope className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div>
           <span className="font-bold">Provider Decision Support Notice:</span> Patient risk scores and timeline trends
@@ -210,14 +211,14 @@ export function DoctorDashboard() {
       </div>
 
       {/* Portal Tab Switch */}
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-lavender-200 pb-3 dark:border-white/10">
+      <div className="mb-6 flex flex-wrap gap-2 border-b border-lavender-200 pb-3">
         <button
           type="button"
           onClick={() => setPortalTab("patients")}
           className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-black transition ${
             portalTab === "patients"
-              ? "bg-primary text-white shadow-glow"
-              : "bg-white text-ink hover:bg-lavender-50 dark:bg-white/10 dark:text-white"
+                ? "bg-primary text-onbrand shadow-glow"
+                : "bg-surface text-ink hover:bg-lavender-50"
           }`}
         >
           <Users className="h-4 w-4" /> Patient Roster & Telemetry
@@ -228,8 +229,8 @@ export function DoctorDashboard() {
           onClick={() => setPortalTab("herreach")}
           className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-black transition ${
             portalTab === "herreach"
-              ? "bg-primary text-white shadow-glow"
-              : "bg-white text-ink hover:bg-lavender-50 dark:bg-white/10 dark:text-white"
+                ? "bg-primary text-onbrand shadow-glow"
+                : "bg-surface text-ink hover:bg-lavender-50"
           }`}
         >
           <Compass className="h-4 w-4 text-primary" /> HerReach Resource Finder
@@ -242,15 +243,15 @@ export function DoctorDashboard() {
         <>
           {/* Clinical Triage Summary Metrics */}
           <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-lavender-100 bg-white/90 p-5 shadow-soft dark:border-white/10 dark:bg-card">
+        <Card className="border-lavender-100 bg-surface/90 p-5 shadow-soft">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted dark:text-white/60">Active Roster</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">Active Roster</span>
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </span>
           </div>
-          <div className="mt-3 text-3xl font-black text-ink dark:text-white">{stats.total}</div>
-          <p className="mt-1 text-xs text-muted dark:text-white/50">Mothers registered under care</p>
+          <div className="mt-3 text-3xl font-black text-ink">{stats.total}</div>
+          <p className="mt-1 text-xs text-muted">Mothers registered under care</p>
         </Card>
 
         <Card className="border-rose-100 bg-rose-50/40 p-5 shadow-soft dark:border-rose-900/30 dark:bg-rose-950/20">
@@ -264,33 +265,33 @@ export function DoctorDashboard() {
           <p className="mt-1 text-xs text-rose-600/80 dark:text-rose-300/70">Requires endocrine follow-up</p>
         </Card>
 
-        <Card className="border-amber-100 bg-amber-50/40 p-5 shadow-soft dark:border-amber-900/30 dark:bg-amber-950/20">
+        <Card className="border-warning/30 bg-warning/10 p-5 shadow-soft">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">High Risk PPD</span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-900/50">
+            <span className="text-xs font-bold uppercase tracking-wider text-orange-700 dark:text-orange-300">High Risk PPD</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning/15 text-orange-700 dark:text-orange-300">
               <ShieldAlert className="h-5 w-5" />
             </span>
           </div>
-          <div className="mt-3 text-3xl font-black text-amber-700 dark:text-amber-200">{stats.highRiskPPD}</div>
-          <p className="mt-1 text-xs text-amber-600/80 dark:text-amber-300/70">EPDS score elevated</p>
+          <div className="mt-3 text-3xl font-black text-orange-700 dark:text-orange-200">{stats.highRiskPPD}</div>
+          <p className="mt-1 text-xs text-orange-700/80 dark:text-orange-300/70">EPDS score elevated</p>
         </Card>
 
-        <Card className="border-lavender-100 bg-lavender-50/40 p-5 shadow-soft dark:border-lavender-900/30 dark:bg-lavender-950/20">
+        <Card className="border-lavender-100 bg-lavender-50/40 p-5 shadow-soft">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-primary dark:text-lavender-300">Antenatal Tracking</span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-lavender-100 text-primary dark:bg-lavender-900/50">
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">Antenatal Tracking</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-lavender-100 text-primary">
               <Activity className="h-5 w-5" />
             </span>
           </div>
-          <div className="mt-3 text-3xl font-black text-primary dark:text-lavender-200">{stats.pregnant}</div>
-          <p className="mt-1 text-xs text-muted dark:text-white/50">Active pregnancy telemetry</p>
+          <div className="mt-3 text-3xl font-black text-primary">{stats.pregnant}</div>
+          <p className="mt-1 text-xs text-muted">Active pregnancy telemetry</p>
         </Card>
       </div>
 
       {/* Escalation Queue: open chat-triage cases for authorized patients */}
       {escalations.length > 0 && (
         <Card className="mb-6 border-rose-200 p-6 dark:border-rose-900/40">
-          <div className="flex items-center gap-2 text-sm font-black text-ink dark:text-white">
+          <div className="flex items-center gap-2 text-sm font-black text-ink">
             <ShieldAlert className="h-4 w-4 text-rose-600" /> Escalation Queue ({escalations.length})
           </div>
           <p className="mt-1 text-xs text-muted">Chat messages flagged by deterministic triage. Select a patient to review.</p>
@@ -300,9 +301,9 @@ export function DoctorDashboard() {
                 key={item.case_id}
                 type="button"
                 onClick={() => void selectPatient(item.mother_id)}
-                className="flex w-full items-center justify-between gap-2 rounded-xl border border-lavender-100 bg-lavender-50/40 px-3 py-2 text-left text-xs hover:border-primary dark:border-white/10 dark:bg-white/5"
+                className="flex w-full items-center justify-between gap-2 rounded-xl border border-lavender-100 bg-lavender-50/40 px-3 py-2 text-left text-xs hover:border-primary"
               >
-                <span className="font-bold text-ink dark:text-white">{item.mother_name}</span>
+                <span className="font-bold text-ink">{item.mother_name}</span>
                 <span className="font-black uppercase text-rose-600">{item.severity}</span>
               </button>
             ))}
@@ -317,8 +318,8 @@ export function DoctorDashboard() {
           <Card className="p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-black text-ink dark:text-white">Authorized Patient Roster</h2>
-                <p className="text-xs text-muted dark:text-white/60">Select any patient to review longitudinal telemetry and append clinical notes.</p>
+                <h2 className="text-lg font-black text-ink">Authorized Patient Roster</h2>
+                <p className="text-xs text-muted">Select any patient to review longitudinal telemetry and append clinical notes.</p>
               </div>
 
               {/* Filters */}
@@ -330,11 +331,11 @@ export function DoctorDashboard() {
                     placeholder="Search patient name, email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-9 w-full rounded-xl border border-lavender-200 bg-lavender-50/40 pl-9 pr-3 text-xs outline-none focus:border-primary dark:border-white/10 dark:bg-white/5 dark:text-white"
+                    className="h-9 w-full rounded-xl border border-lavender-200 bg-lavender-50/40 pl-9 pr-3 text-xs text-ink outline-none focus:border-primary"
                   />
                 </div>
 
-                <div className="flex rounded-xl bg-lavender-100/60 p-0.5 dark:bg-white/10">
+                <div className="flex rounded-xl bg-lavender-100/60 p-0.5">
                   {(["all", "high", "moderate", "low"] as const).map((lvl) => (
                     <button
                       key={lvl}
@@ -342,8 +343,8 @@ export function DoctorDashboard() {
                       onClick={() => setRiskFilter(lvl)}
                       className={`rounded-lg px-2.5 py-1 text-[11px] font-bold capitalize transition-colors ${
                         riskFilter === lvl
-                          ? "bg-white text-primary shadow-xs dark:bg-primary dark:text-white"
-                          : "text-muted hover:text-ink dark:text-white/60 dark:hover:text-white"
+              ? "bg-surface text-primary shadow-xs"
+              : "text-muted hover:text-ink"
                       }`}
                     >
                       {lvl}
@@ -369,10 +370,10 @@ export function DoctorDashboard() {
                 />
               </div>
             ) : (
-              <div className="mt-6 overflow-hidden rounded-2xl border border-lavender-100 dark:border-white/10">
+              <div className="mt-6 overflow-hidden rounded-2xl border border-lavender-100">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="border-b border-lavender-100 bg-lavender-50/60 text-muted dark:border-white/10 dark:bg-white/5 dark:text-white/60">
+                    <thead className="border-b border-lavender-100 bg-lavender-50/60 text-muted">
                       <tr>
                         <th className="px-4 py-3 font-black uppercase tracking-wider">Patient Name</th>
                         <th className="px-4 py-3 font-black uppercase tracking-wider">Stage & Age</th>
@@ -381,7 +382,7 @@ export function DoctorDashboard() {
                         <th className="px-4 py-3 text-right font-black uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-lavender-100 dark:divide-white/10">
+                    <tbody className="divide-y divide-lavender-100">
                       {filteredPatients.map((patient) => {
                         const isSelected = selectedPatientId === patient.id;
                         const riskBadgeClass = (risk: string, highClass: string, moderateClass: string) =>
@@ -390,41 +391,41 @@ export function DoctorDashboard() {
                             : risk.toLowerCase().includes("mod")
                             ? moderateClass
                             : risk === "Not shared" || risk === "Not screened"
-                            ? "bg-lavender-100 text-muted dark:bg-white/10 dark:text-white/60"
-                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300";
+                    ? "bg-lavender-100 text-muted"
+                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300";
 
                         return (
                           <tr
                             key={patient.id}
                             className={`cursor-pointer transition-colors ${
                               isSelected
-                                ? "bg-lavender-100/70 dark:bg-white/15"
-                                : "hover:bg-lavender-50/40 dark:hover:bg-white/5"
+                    ? "bg-lavender-100/70"
+                    : "hover:bg-lavender-50/40"
                             }`}
                             onClick={() => selectPatient(patient.id)}
                           >
                             <td className="px-4 py-3.5">
-                              <div className="font-bold text-ink dark:text-white">{patient.name}</div>
-                              <div className="text-[11px] text-muted dark:text-white/50">{patient.email}</div>
+                              <div className="font-bold text-ink">{patient.name}</div>
+                              <div className="text-[11px] text-muted">{patient.email}</div>
                             </td>
                             <td className="px-4 py-3.5">
-                              <div className="font-semibold text-ink dark:text-white/90">
+                              <div className="font-semibold text-ink/90">
                                 {patient.pregnancy_status || "Not specified"}
                               </div>
-                              <div className="text-[11px] text-muted dark:text-white/50">
+                              <div className="text-[11px] text-muted">
                                 {patient.age ? `${patient.age} yrs` : "Age —"} · {patient.blood_group || "Blood —"}
                               </div>
                             </td>
                             <td className="px-4 py-3.5">
                               <span
-                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${riskBadgeClass(patient.latest_pcos_risk, "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300", "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300")}`}
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${riskBadgeClass(patient.latest_pcos_risk, "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300", "bg-warning/15 text-orange-700 dark:bg-warning/20 dark:text-orange-300")}`}
                               >
                                 {patient.latest_pcos_risk}
                               </span>
                             </td>
                             <td className="px-4 py-3.5">
                               <span
-                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${riskBadgeClass(patient.latest_ppd_risk, "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300", "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300")}`}
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${riskBadgeClass(patient.latest_ppd_risk, "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300", "bg-warning/15 text-orange-700 dark:bg-warning/20 dark:text-orange-300")}`}
                               >
                                 {patient.latest_ppd_risk}
                               </span>
@@ -465,21 +466,21 @@ export function DoctorDashboard() {
                 <Card className="p-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-white shadow-glow">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-onbrand shadow-glow">
                         <User className="h-7 w-7" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h2 className="text-xl font-black text-ink dark:text-white">{timelineData.patient.name}</h2>
+                          <h2 className="text-xl font-black text-ink">{timelineData.patient.name}</h2>
                           <Badge variant="outline" className="border-lavender-300 text-primary">
                             {timelineData.patient.blood_group || "Blood Type Unspecified"}
                           </Badge>
                         </div>
-                        <p className="mt-0.5 text-xs text-muted dark:text-white/60">
+                        <p className="mt-0.5 text-xs text-muted">
                           {timelineData.patient.age ? `${timelineData.patient.age} years old` : "Age unrecorded"} ·{" "}
                           {timelineData.patient.pregnancy_status || "Postpartum / Antenatal"}
                         </p>
-                        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted dark:text-white/60">
+                        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted">
                           <span className="flex items-center gap-1">
                             <Mail className="h-3 w-3" /> {timelineData.patient.email}
                           </span>
@@ -516,23 +517,23 @@ export function DoctorDashboard() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   {/* Screening Syntheses */}
                   <Card className="p-5">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-muted dark:text-white/60">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-muted">
                       <HeartPulse className="h-4 w-4 text-primary" /> Screening History
                     </div>
                     <div className="mt-3 space-y-3">
                       {timelineData.pcos_screenings.length > 0 ? (
                         timelineData.pcos_screenings.slice(0, 2).map((p) => (
-                          <div key={p.id} className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs dark:border-white/10 dark:bg-white/5">
-                            <div className="flex items-center justify-between font-bold text-ink dark:text-white">
+                          <div key={p.id} className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs">
+                            <div className="flex items-center justify-between font-bold text-ink">
                               <span>PCOS Evaluation</span>
                               <span className="capitalize text-primary">{p.risk_level}</span>
                             </div>
-                            <p className="mt-1 text-[11px] text-muted dark:text-white/60">
+                            <p className="mt-1 text-[11px] text-muted">
                               {p.probability === undefined ? "" : `Probability: ${Math.round(p.probability * 100)}% · `}
-                              {new Date(p.created_at).toLocaleDateString()}
+                              {formatDate(p.created_at)}
                             </p>
                             {p.recommendations && (
-                              <p className="mt-1 text-[11px] italic text-muted dark:text-white/50 line-clamp-2">
+                              <p className="mt-1 text-[11px] italic text-muted line-clamp-2">
                                 {p.recommendations}
                               </p>
                             )}
@@ -544,15 +545,15 @@ export function DoctorDashboard() {
 
                       {timelineData.ppd_screenings.length > 0 ? (
                         timelineData.ppd_screenings.slice(0, 2).map((d) => (
-                          <div key={d.id} className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs dark:border-white/10 dark:bg-white/5">
-                            <div className="flex items-center justify-between font-bold text-ink dark:text-white">
+                          <div key={d.id} className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs">
+                            <div className="flex items-center justify-between font-bold text-ink">
                               <span>EPDS Postpartum Assessment</span>
-                              <span className="capitalize text-amber-600 dark:text-amber-300">{d.risk_level}</span>
+                              <span className="capitalize text-orange-700 dark:text-orange-300">{d.risk_level}</span>
                             </div>
-                            <p className="mt-1 text-[11px] text-muted dark:text-white/60">
+                            <p className="mt-1 text-[11px] text-muted">
                               {d.epds_score === undefined ? "" : `EPDS Score: ${d.epds_score}/30 · `}
                               {d.sentiment ? `Sentiment: ${d.sentiment} · ` : ""}
-                              {new Date(d.created_at).toLocaleDateString()}
+                              {formatDate(d.created_at)}
                             </p>
                           </div>
                         ))
@@ -564,7 +565,7 @@ export function DoctorDashboard() {
 
                   {/* Conversation History (consent-gated) */}
                   <Card className="p-5">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-muted dark:text-white/60">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-muted">
                       <Mail className="h-4 w-4 text-primary" /> Conversation History
                     </div>
                     <div className="mt-3 space-y-2">
@@ -574,9 +575,9 @@ export function DoctorDashboard() {
                         <p className="text-xs text-muted">No conversations shared for this patient yet.</p>
                       ) : (
                         patientChat.slice(0, 5).map((chat) => (
-                          <div key={chat.id} className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs dark:border-white/10 dark:bg-white/5">
-                            <p className="font-bold text-ink dark:text-white">Patient: {chat.message}</p>
-                            <p className="mt-1 text-muted dark:text-white/60">{chat.response}</p>
+                          <div key={chat.id} className="rounded-xl border border-lavender-100 bg-lavender-50/40 p-3 text-xs">
+                            <p className="font-bold text-ink">Patient: {chat.message}</p>
+                            <p className="mt-1 text-muted">{chat.response}</p>
                           </div>
                         ))
                       )}
@@ -585,18 +586,18 @@ export function DoctorDashboard() {
 
                   {/* Self-Reported Symptoms & Moods */}
                   <Card className="p-5">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-muted dark:text-white/60">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-muted">
                       <Activity className="h-4 w-4 text-secondary" /> Daily Symptoms & Mood
                     </div>
                     <div className="mt-3 space-y-3">
                       <div>
-                        <span className="text-[11px] font-bold text-ink dark:text-white">Recent Mood Trend:</span>
+                        <span className="text-[11px] font-bold text-ink">Recent Mood Trend:</span>
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {timelineData.moods.length > 0 ? (
                             timelineData.moods.slice(0, 5).map((m) => (
                               <span
                                 key={m.id}
-                                className="inline-flex items-center gap-1 rounded-lg border border-lavender-100 bg-white px-2 py-1 text-[11px] font-semibold capitalize text-ink shadow-2xs dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                className="inline-flex items-center gap-1 rounded-lg border border-lavender-100 bg-surface px-2 py-1 text-[11px] font-semibold capitalize text-ink shadow-2xs"
                               >
                                 {m.mood}
                               </span>
@@ -608,7 +609,7 @@ export function DoctorDashboard() {
                       </div>
 
                       <div className="pt-2">
-                        <span className="text-[11px] font-bold text-ink dark:text-white">Latest Symptoms:</span>
+                        <span className="text-[11px] font-bold text-ink">Latest Symptoms:</span>
                         {timelineData.symptoms.length > 0 ? (
                           <div className="mt-1.5 flex flex-wrap gap-1.5">
                             {timelineData.symptoms[0].fatigue && <Badge variant="secondary">Fatigue</Badge>}
@@ -629,15 +630,15 @@ export function DoctorDashboard() {
                 <Card className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-base font-black text-ink dark:text-white">Clinical Notes & Follow-up</h3>
-                      <p className="text-xs text-muted dark:text-white/60">Append physician observations and prescribed lifestyle or therapeutic advice.</p>
+                      <h3 className="text-base font-black text-ink">Clinical Notes & Follow-up</h3>
+                      <p className="text-xs text-muted">Append physician observations and prescribed lifestyle or therapeutic advice.</p>
                     </div>
                   </div>
 
                   {/* Form */}
-                  <form onSubmit={handleAddNote} className="mt-4 space-y-3 rounded-2xl border border-lavender-100 bg-lavender-50/30 p-4 dark:border-white/10 dark:bg-white/5">
+                  <form onSubmit={handleAddNote} className="mt-4 space-y-3 rounded-2xl border border-lavender-100 bg-lavender-50/30 p-4">
                     <div>
-                      <label className="block text-xs font-bold text-ink dark:text-white">
+                      <label className="block text-xs font-bold text-ink">
                         Clinical Observations & Diagnostic Impression *
                       </label>
                       <textarea
@@ -646,13 +647,13 @@ export function DoctorDashboard() {
                         value={observations}
                         onChange={(e) => setObservations(e.target.value)}
                         placeholder="e.g. Patient presents with irregular cycle symptoms, mild fatigue. EPDS score stable at 6..."
-                        className="mt-1 w-full rounded-xl border border-lavender-200 bg-white p-3 text-xs outline-none focus:border-primary dark:border-white/10 dark:bg-white/10 dark:text-white"
+                        className="mt-1 w-full rounded-xl border border-lavender-200 bg-surface p-3 text-xs text-ink outline-none focus:border-primary"
                       />
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="block text-xs font-bold text-ink dark:text-white">
+                        <label className="block text-xs font-bold text-ink">
                           Prescribed Advice / Nutrition Guidance
                         </label>
                         <input
@@ -660,11 +661,11 @@ export function DoctorDashboard() {
                           value={prescribedAdvice}
                           onChange={(e) => setPrescribedAdvice(e.target.value)}
                           placeholder="e.g. High-fiber diet, hydration 2.5L/day"
-                          className="mt-1 w-full rounded-xl border border-lavender-200 bg-white p-2.5 text-xs outline-none focus:border-primary dark:border-white/10 dark:bg-white/10 dark:text-white"
+                          className="mt-1 w-full rounded-xl border border-lavender-200 bg-surface p-2.5 text-xs text-ink outline-none focus:border-primary"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-ink dark:text-white">
+                        <label className="block text-xs font-bold text-ink">
                           Follow-up Schedule
                         </label>
                         <input
@@ -672,7 +673,7 @@ export function DoctorDashboard() {
                           value={recommendations}
                           onChange={(e) => setRecommendations(e.target.value)}
                           placeholder="e.g. Repeat EPDS screening in 2 weeks"
-                          className="mt-1 w-full rounded-xl border border-lavender-200 bg-white p-2.5 text-xs outline-none focus:border-primary dark:border-white/10 dark:bg-white/10 dark:text-white"
+                          className="mt-1 w-full rounded-xl border border-lavender-200 bg-surface p-2.5 text-xs text-ink outline-none focus:border-primary"
                         />
                       </div>
                     </div>
@@ -692,33 +693,33 @@ export function DoctorDashboard() {
 
                   {/* Past Doctor Notes Feed */}
                   <div className="mt-6 space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted dark:text-white/60">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted">
                       Previous Consultation Notes ({timelineData.doctor_notes.length})
                     </h4>
                     {timelineData.doctor_notes.length > 0 ? (
                       timelineData.doctor_notes.map((note) => (
                         <div
                           key={note.id}
-                          className="rounded-xl border border-lavender-100 bg-white p-4 text-xs shadow-2xs dark:border-white/10 dark:bg-card"
+                          className="rounded-xl border border-lavender-100 bg-surface p-4 text-xs shadow-2xs"
                         >
-                          <div className="flex items-center justify-between text-muted dark:text-white/50">
+                          <div className="flex items-center justify-between text-muted">
                             <span className="flex items-center gap-1 font-semibold text-primary">
                               <Stethoscope className="h-3.5 w-3.5" /> Attending Physician
                             </span>
                             <span className="flex items-center gap-1 text-[11px]">
-                              <Clock className="h-3 w-3" /> {new Date(note.created_at).toLocaleString()}
+                              <Clock className="h-3 w-3" /> {formatDateTime(note.created_at)}
                             </span>
                           </div>
-                          <p className="mt-2 text-xs leading-relaxed text-ink dark:text-white">
+                          <p className="mt-2 text-xs leading-relaxed text-ink">
                             {note.clinical_observations}
                           </p>
                           {note.prescribed_advice && (
-                            <div className="mt-2 rounded-lg bg-lavender-50/60 p-2 text-[11px] text-lavender-900 dark:bg-white/5 dark:text-lavender-200">
+                            <div className="mt-2 rounded-lg bg-lavender-50/60 p-2 text-[11px] text-lavender-900">
                               <span className="font-bold">Advice:</span> {note.prescribed_advice}
                             </div>
                           )}
                           {note.follow_up_recommendation && (
-                            <p className="mt-1 text-[11px] text-muted dark:text-white/50">
+                            <p className="mt-1 text-[11px] text-muted">
                               <span className="font-semibold">Follow-up:</span> {note.follow_up_recommendation}
                             </p>
                           )}
@@ -822,11 +823,11 @@ function DoctorHerReachView() {
   return (
     <div className="space-y-6">
       {/* Professional Scope Notice */}
-      <div className="rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs text-lavender-900 dark:border-lavender-800/40 dark:bg-lavender-950/40 dark:text-lavender-200">
-        <span className="font-black text-ink dark:text-white">Clinical Guidance Notice:</span> This resource finder enables clinicians to discover nearby specialized facilities and diagnostic partners for patient referral discussions. It does not automate clinical appointments, formal referral exchanges, or electronic medical record handovers. Facilities are verified via map providers without independent clinical endorsement.
+        <div className="rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs text-lavender-900">
+        <span className="font-black text-ink">Clinical Guidance Notice:</span> This resource finder enables clinicians to discover nearby specialized facilities and diagnostic partners for patient referral discussions. It does not automate clinical appointments, formal referral exchanges, or electronic medical record handovers. Facilities are verified via map providers without independent clinical endorsement.
       </div>
 
-      <Card className="border-lavender-100 bg-white/90 p-5 shadow-soft dark:border-white/10 dark:bg-card">
+          <Card className="border-lavender-100 bg-surface/90 p-5 shadow-soft">
         <SectionHeader
           title="Healthcare Resource Finder"
           subtitle="Discover nearby specialists, diagnostic labs, hospitals, and emergency casualty units"
@@ -925,8 +926,8 @@ function DoctorHerReachView() {
                   }}
                   className={`rounded-2xl px-3.5 py-1.5 text-xs font-bold transition ${
                     active
-                      ? "bg-primary text-white shadow-soft"
-                      : "border border-lavender-200 bg-white text-ink hover:bg-lavender-50 dark:border-white/10 dark:bg-card dark:text-white"
+                      ? "bg-primary text-onbrand shadow-soft"
+                      : "border border-lavender-200 bg-surface text-ink hover:bg-lavender-50"
                   }`}
                 >
                   {cat.label}
@@ -939,20 +940,20 @@ function DoctorHerReachView() {
 
       {/* Provider Status / Fallback */}
       {!isLiveProvider && hasSearched && (
-        <Card className="border-amber-200 bg-amber-50/60 p-5 dark:border-amber-900/40 dark:bg-amber-950/20">
+        <Card className="border-warning/30 bg-warning/10 p-5">
           <div className="flex items-start gap-3">
-            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-orange-700 dark:text-orange-300" />
             <div className="space-y-2">
-              <p className="text-xs font-black text-amber-900 dark:text-amber-200">
+              <p className="text-xs font-black text-orange-800 dark:text-orange-200">
                 Live Maps Provider Status
               </p>
-              <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+              <p className="text-xs leading-relaxed text-orange-800 dark:text-orange-300">
                 {providerStatus || "Live Google Places API is unconfigured in this environment. In adherence to clinical data integrity, synthetic facility records are never generated."}
               </p>
               <Button
                 variant="secondary"
                 size="sm"
-                className="gap-2 border border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-card dark:text-amber-100"
+                className="gap-2 border border-warning/40 bg-surface text-orange-800 hover:bg-warning/10 dark:border-warning/50 dark:text-orange-200"
                 onClick={() => {
                   if (externalSearchUrl) window.open(externalSearchUrl, "_blank", "noopener,noreferrer");
                 }}
@@ -976,7 +977,7 @@ function DoctorHerReachView() {
           {facilities.map((facility) => (
             <Card
               key={facility.id}
-              className="flex flex-col justify-between border-lavender-100 p-5 transition hover:shadow-card dark:border-white/10 dark:bg-card"
+              className="flex flex-col justify-between border-lavender-100 p-5 transition hover:shadow-card"
             >
               <div className="space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
@@ -984,15 +985,15 @@ function DoctorHerReachView() {
                     {facility.facility_type}
                   </Badge>
                   {facility.distance_km !== null && facility.distance_km !== undefined && (
-                    <span className="rounded-xl bg-lavender-100 px-2 py-0.5 text-[10px] font-black text-primary dark:bg-white/10 dark:text-white">
+                    <span className="rounded-xl bg-lavender-100 px-2 py-0.5 text-[10px] font-black text-primary">
                       {facility.distance_km} km away
                     </span>
                   )}
                 </div>
 
-                <h3 className="text-sm font-black text-ink dark:text-white">{facility.name}</h3>
+                <h3 className="text-sm font-black text-ink">{facility.name}</h3>
 
-                <p className="flex items-start gap-1.5 text-xs text-muted dark:text-white/60">
+                <p className="flex items-start gap-1.5 text-xs text-muted">
                   <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-secondary" />
                   <span>{facility.address}</span>
                 </p>
@@ -1002,13 +1003,13 @@ function DoctorHerReachView() {
                 )}
 
                 {facility.rating !== null && facility.rating !== undefined && (
-                  <p className="text-[11px] font-bold text-muted dark:text-white/60">
+                  <p className="text-[11px] font-bold text-muted">
                     ★ {facility.rating} ({facility.user_ratings_total || 0} reviews)
                   </p>
                 )}
               </div>
 
-              <div className="mt-4 flex items-center gap-2 border-t border-lavender-100 pt-3 dark:border-white/10">
+              <div className="mt-4 flex items-center gap-2 border-t border-lavender-100 pt-3">
                 {facility.contact_number && (
                   <Button
                     variant="secondary"
@@ -1051,13 +1052,13 @@ function DoctorHerReachView() {
             {helplines.map((helpline, idx) => (
               <Card
                 key={idx}
-                className="border-lavender-100 bg-white/80 p-4 transition hover:shadow-soft dark:border-white/10 dark:bg-card"
+                className="border-lavender-100 bg-surface/80 p-4 transition hover:shadow-soft"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs font-black text-ink dark:text-white">{helpline.title}</p>
+                  <p className="text-xs font-black text-ink">{helpline.title}</p>
                   <span className="font-mono text-sm font-black text-primary">{helpline.number}</span>
                 </div>
-                <p className="mt-1 text-[11px] text-muted dark:text-white/60">{helpline.description}</p>
+                <p className="mt-1 text-[11px] text-muted">{helpline.description}</p>
                 <Button
                   variant="secondary"
                   size="sm"

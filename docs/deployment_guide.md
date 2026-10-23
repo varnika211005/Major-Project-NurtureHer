@@ -1,14 +1,18 @@
 # Deployment Guide
 
-## Local Production Run
+## Production Compose Run
 Production Kubernetes manifests live under `deployment/k8s/`.
 
+Use the production Compose file explicitly so the development override is not loaded:
+
 ```sh
-cp .env.example .env
-docker compose up --build
+cp .env.production.example .env
+docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-The API is available at `http://localhost:8000`.
+Replace every placeholder secret before starting. Nginx exposes the API on port 80; Prometheus is on `9090` and Grafana on `3000`.
+
+The production Compose file includes nginx, API, worker, PostgreSQL, Redis, Prometheus, and Grafana. It does **not** define a Celery beat service; confirm scheduled-job coverage before relying on beat-dependent tasks in production.
 
 ## Deployment Steps
 
@@ -18,7 +22,7 @@ The API is available at `http://localhost:8000`.
 4. Build containers with `docker compose -f docker-compose.prod.yml build`.
 5. Start PostgreSQL and Redis with `docker compose -f docker-compose.prod.yml up -d db redis`.
 6. Apply migrations with `docker compose -f docker-compose.prod.yml run --rm api sh scripts/ops/migrate.sh`.
-7. Seed demo/baseline records only when intentionally needed with `docker compose -f docker-compose.prod.yml run --rm api sh scripts/ops/seed.sh`. Set `NURTUREHER_SEED_ADMIN_PASSWORD` first if the demo admin user should be created.
+7. Seed demo/baseline records only in a controlled demonstration environment with `docker compose -f docker-compose.prod.yml run --rm api sh scripts/ops/seed.sh`. Set `NURTUREHER_DEMO_PASSWORD` for the seeded accounts; the seed script prints that password. Do not use demo seeding for a real clinical deployment.
 8. Start all services with `docker compose -f docker-compose.prod.yml up -d`.
 9. Confirm liveness with `curl http://localhost/live` and readiness with `curl http://localhost/ready`.
 
@@ -29,18 +33,22 @@ Production containers run `scripts/docker/start_api.sh`, which applies Alembic m
 Create a backup:
 
 ```sh
-docker compose exec api sh scripts/ops/backup_db.sh
+docker compose -f docker-compose.prod.yml exec api sh scripts/ops/backup_db.sh
 ```
 
 Restore from a backup:
 
 ```sh
-docker compose exec -T api sh scripts/ops/restore_db.sh backups/file.sql
+docker compose -f docker-compose.prod.yml exec -T api sh scripts/ops/restore_db.sh backups/file.sql
 ```
+
+Backups are written inside the API container's volume context by default (`backups/`). Confirm the path is on persistent/shared storage and copy it off-host according to the deployment's retention policy.
 
 ## Monitoring
 
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
-- API metrics: `http://localhost:8000/metrics`
-- Infrastructure metrics: `http://localhost:8000/metrics/infra`
+- API metrics through nginx: `http://localhost/metrics`
+- Infrastructure metrics through nginx: `http://localhost/metrics/infra`
+
+The production Compose API uses `expose` rather than a host port; use nginx or an internal network to reach the API. Port 8000 is exposed directly in the development Compose file only.

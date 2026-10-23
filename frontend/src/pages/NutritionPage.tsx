@@ -11,6 +11,7 @@ import {
   Utensils,
 } from "lucide-react";
 import { api, CareCircleConnectionItem, CaregiverNutritionData, DoctorNutritionData, NutritionCarePlan, NutritionDraftPayload, NutritionMeal, NutritionPreferences, NutritionSuggestion } from "@/lib/api";
+import { formatDate, formatDateTime } from "@/lib/locale";
 import { useAuth } from "@/context/useAuth";
 import { useLanguage } from "@/context/useLanguage";
 import { Page } from "@/components/common/Page";
@@ -246,7 +247,7 @@ function MotherNutritionPage() {
                 <h2 className="font-black text-ink dark:text-white">Your active nutrition plan: {data.active_plan.title}</h2>
                 <Badge>{sourceLabel(data.active_plan.source)}</Badge>
               </div>
-              <p className="mt-1 text-xs text-muted">Version {data.active_plan.version}{data.active_plan.reviewed_at ? ` · Reviewed ${new Date(data.active_plan.reviewed_at).toLocaleDateString()}` : ""}</p>
+              <p className="mt-1 text-xs text-muted">Version {data.active_plan.version}{data.active_plan.reviewed_at ? ` · Reviewed ${formatDate(data.active_plan.reviewed_at)}` : ""}</p>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {data.active_plan.meals.map((meal, index) => <MealCard key={`${meal.name}-${index}`} meal={meal} simple />)}
               </div>
@@ -600,7 +601,7 @@ function DoctorNutritionPage() {
             {data.plans.length ? data.plans.map((plan) => (
               <Card key={plan.id}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-black text-ink dark:text-white">{plan.title}</h3><Badge>{plan.status}</Badge><Badge>{sourceLabel(plan.source)}</Badge></div><p className="mt-1 text-xs text-muted">Version {plan.version}{plan.reviewed_at ? ` · Reviewed ${new Date(plan.reviewed_at).toLocaleString()}` : ""}</p></div>
+                  <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-black text-ink dark:text-white">{plan.title}</h3><Badge>{plan.status}</Badge><Badge>{sourceLabel(plan.source)}</Badge></div><p className="mt-1 text-xs text-muted">Version {plan.version}{plan.reviewed_at ? ` · Reviewed ${formatDateTime(plan.reviewed_at)}` : ""}</p></div>
                   <div className="flex flex-wrap gap-2">
                     {plan.status === "draft" && <><Button type="button" size="sm" variant="secondary" onClick={() => startDraft(plan)}>Edit draft</Button><Button type="button" size="sm" onClick={() => void publish(plan.id)}>Review & publish</Button></>}
                     {plan.status === "active" && <Button type="button" size="sm" variant="secondary" onClick={() => void discontinue(plan.id)}>Discontinue</Button>}

@@ -112,6 +112,7 @@ export interface LandingDict {
   mGuides: string;
   mFaq: string;
   pill: string;
+  exploreDemo: string;
   winCheck: string;
   winNote: string;
   winGuides: string;
@@ -233,61 +234,10 @@ export interface LandingDict {
   prefOpts: string[];
 }
 
-export const LANDING_LIGHT_TOKENS: Record<string, string> = {
-  bg: "#FFF8FA",
-  bg2: "#FDEFF3",
-  surface: "#FFFFFF",
-  ink: "#3A2750",
-  muted: "#6E5C86",
-  blush: "#F8DDE5",
-  blush2: "#F6D9D2",
-  lav: "#E3D9F8",
-  lav2: "#F1EBFC",
-  lilac: "#B9A5EC",
-  rose: "#C98578",
-  roseDeep: "#9A5560",
-  line: "#EEDDE6",
-  glow: "rgba(201,133,120,0.32)",
-  onInk: "#FFF8FA",
-  foot: "#3A2750",
-  hdr: "rgba(255,248,250,0.88)",
-  wbtn: "rgba(255,255,255,0.75)",
-  orbHi: "#FFFFFF",
-  orbRing: "rgba(255,255,255,0.7)",
-  veil: "rgba(255,255,255,0.35)",
-  blobOp: "0.9",
-  g1: "#C98578",
-  g2: "#9A5560",
-  g3: "#7A5FC4",
-};
-
-export const LANDING_DARK_TOKENS: Record<string, string> = {
-  bg: "#1B1430",
-  bg2: "#241A3D",
-  surface: "#2B2148",
-  ink: "#F6EEFF",
-  muted: "#C4B5DE",
-  blush: "#4A2A4F",
-  blush2: "#5A3358",
-  lav: "#3A2C63",
-  lav2: "#32265A",
-  lilac: "#8F78D8",
-  rose: "#E3A89C",
-  roseDeep: "#F2A9B8",
-  line: "#3F3162",
-  glow: "rgba(183,156,242,0.30)",
-  onInk: "#2A1D45",
-  foot: "#120C22",
-  hdr: "rgba(27,20,48,0.88)",
-  wbtn: "rgba(20,12,38,0.45)",
-  orbHi: "#5B4690",
-  orbRing: "rgba(183,156,242,0.18)",
-  veil: "rgba(255,255,255,0.08)",
-  blobOp: "0.3",
-  g1: "#F3B6A8",
-  g2: "#F2A9B8",
-  g3: "#BBA4FF",
-};
+// The landing design tokens are the source of truth for the whole application.
+// They now live in the shared theme module so every screen renders from one
+// palette; they are re-exported here so existing imports keep working.
+export { LANDING_LIGHT_TOKENS, LANDING_DARK_TOKENS } from "@/theme/tokens";
 
 export interface LangOption {
   code: LandingLang;
@@ -311,6 +261,7 @@ export const LANDING_DICT: Record<LandingLang, LandingDict> = {
     navWhy: "Why NurtureHer", navPlat: "Platform", navGuides: "Overview", navFaq: "FAQ",
     mWhy: "Why NurtureHer", mPlat: "The platform", mDemo: "Try a check-in", mGuides: "Quick overview", mFaq: "FAQ",
     pill: "Women’s health · PPD · PCOS",
+    exploreDemo: "Explore demo",
     winCheck: "check-in.app", winNote: "daily-note.txt", winGuides: "overview", previewWord: "preview", minAria: "Minimise", closeWinAria: "Close window",
     heroWords: ["Support", "that", "stays", "with", "her."], heroGrad: 2,
     heroLead: "NurtureHer brings gentle, trusted guidance on postpartum depression, PCOS and everyday wellbeing, so no woman has to figure it out alone.",
@@ -422,6 +373,7 @@ export const LANDING_DICT: Record<LandingLang, LandingDict> = {
     navWhy: "NurtureHer क्यों", navPlat: "प्लेटफ़ॉर्म", navGuides: "परिचय", navFaq: "सवाल-जवाब",
     mWhy: "NurtureHer क्यों", mPlat: "प्लेटफ़ॉर्म", mDemo: "चेक-इन आज़माएँ", mGuides: "संक्षिप्त परिचय", mFaq: "सवाल-जवाब",
     pill: "महिला स्वास्थ्य · पीपीडी · पीसीओएस",
+    exploreDemo: "डेमो देखें",
     winCheck: "चेक-इन ऐप", winNote: "दैनिक नोट", winGuides: "परिचय", previewWord: "पूर्वावलोकन", minAria: "छोटा करें", closeWinAria: "विंडो बंद करें",
     heroWords: ["उसके", "साथ", "हमेशा", "रहने", "वाला", "सहारा।"], heroGrad: 2,
     heroLead: "NurtureHer प्रसवोत्तर अवसाद, पीसीओएस और रोज़मर्रा की सेहत पर कोमल, भरोसेमंद मार्गदर्शन देता है, ताकि किसी भी महिला को सब कुछ अकेले न सँभालना पड़े।",
@@ -533,6 +485,7 @@ export const LANDING_DICT: Record<LandingLang, LandingDict> = {
     navWhy: "NurtureHer ಏಕೆ", navPlat: "ವೇದಿಕೆ", navGuides: "ಅವಲೋಕನ", navFaq: "ಪ್ರಶ್ನೋತ್ತರ",
     mWhy: "NurtureHer ಏಕೆ", mPlat: "ವೇದಿಕೆ", mDemo: "ಚೆಕ್-ಇನ್ ಪ್ರಯತ್ನಿಸಿ", mGuides: "ತ್ವರಿತ ಅವಲೋಕನ", mFaq: "ಪ್ರಶ್ನೋತ್ತರ",
     pill: "ಮಹಿಳಾ ಆರೋಗ್ಯ · ಪಿಪಿಡಿ · ಪಿಸಿಓಎಸ್",
+    exploreDemo: "ಡೆಮೋ ನೋಡಿ",
     winCheck: "ಚೆಕ್-ಇನ್ ಆ್ಯಪ್", winNote: "ದೈನಂದಿನ ಟಿಪ್ಪಣಿ", winGuides: "ಅವಲೋಕನ", previewWord: "ಮುನ್ನೋಟ", minAria: "ಚಿಕ್ಕದಾಗಿಸಿ", closeWinAria: "ವಿಂಡೋ ಮುಚ್ಚಿ",
     heroWords: ["ಅವಳ", "ಜೊತೆ", "ಸದಾ", "ಇರುವ", "ಬೆಂಬಲ."], heroGrad: 2,
     heroLead: "NurtureHer ಪ್ರಸವೋತ್ತರ ಖಿನ್ನತೆ, ಪಿಸಿಓಎಸ್ ಮತ್ತು ದೈನಂದಿನ ಯೋಗಕ್ಷೇಮದ ಕುರಿತು ಮೃದುವಾದ, ವಿಶ್ವಾಸಾರ್ಹ ಮಾರ್ಗದರ್ಶನ ನೀಡುತ್ತದೆ, ಯಾವ ಮಹಿಳೆಯೂ ಎಲ್ಲವನ್ನೂ ಒಂಟಿಯಾಗಿ ನಿಭಾಯಿಸಬೇಕಾಗಿಲ್ಲ.",
@@ -644,6 +597,7 @@ export const LANDING_DICT: Record<LandingLang, LandingDict> = {
     navWhy: "NurtureHer ஏன்", navPlat: "தளம்", navGuides: "கண்ணோட்டம்", navFaq: "கேள்வி-பதில்",
     mWhy: "NurtureHer ஏன்", mPlat: "தளம்", mDemo: "செக்-இன் முயற்சி", mGuides: "விரைவு கண்ணோட்டம்", mFaq: "கேள்வி-பதில்",
     pill: "பெண்கள் நலம் · பிபிடி · பிசிஓஎஸ்",
+    exploreDemo: "டெமோவை ஆராயுங்கள்",
     winCheck: "செக்-இன் ஆப்", winNote: "தினசரி குறிப்பு", winGuides: "கண்ணோட்டம்", previewWord: "முன்னோட்டம்", minAria: "சிறிதாக்கு", closeWinAria: "சாளரத்தை மூடு",
     heroWords: ["அவளுடன்", "எப்போதும்", "இருக்கும்", "ஆதரவு."], heroGrad: 1,
     heroLead: "NurtureHer, பிரசவத்திற்குப் பிந்தைய மனச்சோர்வு, பிசிஓஎஸ் மற்றும் அன்றாட நலம் குறித்து மென்மையான, நம்பகமான வழிகாட்டுதலை வழங்குகிறது; எந்தப் பெண்ணும் எல்லாவற்றையும் தனியாகச் சமாளிக்க வேண்டியதில்லை.",
@@ -755,6 +709,7 @@ export const LANDING_DICT: Record<LandingLang, LandingDict> = {
     navWhy: "NurtureHer ఎందుకు", navPlat: "వేదిక", navGuides: "అవలోకనం", navFaq: "ప్రశ్నలు-జవాబులు",
     mWhy: "NurtureHer ఎందుకు", mPlat: "వేదిక", mDemo: "చెక్-ఇన్ ప్రయత్నించండి", mGuides: "శీఘ్ర అవలోకనం", mFaq: "ప్రశ్నలు-జవాబులు",
     pill: "మహిళల ఆరోగ్యం · పిపిడి · పిసిఓఎస్",
+    exploreDemo: "డెమోను అన్వేషించండి",
     winCheck: "చెక్-ఇన్ యాప్", winNote: "రోజువారీ నోట్", winGuides: "అవలోకనం", previewWord: "ప్రివ్యూ", minAria: "చిన్నది చేయి", closeWinAria: "విండో మూసివేయి",
     heroWords: ["ఆమెతో", "ఎప్పుడూ", "ఉండే", "ఆసరా."], heroGrad: 1,
     heroLead: "NurtureHer ప్రసవానంతర డిప్రెషన్, పిసిఓఎస్ మరియు రోజువారీ శ్రేయస్సుపై సున్నితమైన, నమ్మదగిన మార్గదర్శనం అందిస్తుంది, ఏ స్త్రీ అయినా అన్నింటినీ ఒంటరిగా ఎదుర్కోవాల్సిన అవసరం లేదు.",
@@ -866,6 +821,7 @@ export const LANDING_DICT: Record<LandingLang, LandingDict> = {
     navWhy: "NurtureHer എന്തുകൊണ്ട്", navPlat: "പ്ലാറ്റ്‌ഫോം", navGuides: "അവലോകനം", navFaq: "ചോദ്യോത്തരം",
     mWhy: "NurtureHer എന്തുകൊണ്ട്", mPlat: "പ്ലാറ്റ്‌ഫോം", mDemo: "ചെക്ക്-ഇൻ പരീക്ഷിക്കൂ", mGuides: "ചുരുക്ക അവലോകനം", mFaq: "ചോദ്യോത്തരം",
     pill: "സ്ത്രീ ആരോഗ്യം · പിപിഡി · പിസിഒഎസ്",
+    exploreDemo: "ഡെമോ പരിശോധിക്കുക",
     winCheck: "ചെക്ക്-ഇൻ ആപ്പ്", winNote: "ദിനക്കുറിപ്പ്", winGuides: "അവലോകനം", previewWord: "പ്രിവ്യൂ", minAria: "ചെറുതാക്കുക", closeWinAria: "വിൻഡോ അടയ്ക്കുക",
     heroWords: ["അവളോടൊപ്പം", "എപ്പോഴും", "നിൽക്കുന്ന", "പിന്തുണ."], heroGrad: 1,
     heroLead: "NurtureHer, പ്രസവാനന്തര വിഷാദം, പിസിഒഎസ്, ദൈനംദിന ക്ഷേമം എന്നിവയെക്കുറിച്ച് സൗമ്യവും വിശ്വസനീയവുമായ മാർഗനിർദേശം നൽകുന്നു, ഒരു സ്ത്രീയും എല്ലാം ഒറ്റയ്ക്ക് നേരിടേണ്ടതില്ല.",

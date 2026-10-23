@@ -40,6 +40,7 @@ import {
   Symptom,
   WellnessInsight,
 } from "@/lib/api";
+import { formatDate, formatTime } from "@/lib/locale";
 import { useAuth } from "@/context/useAuth";
 import { Page } from "@/components/common/Page";
 import { SectionHeader } from "@/components/common/Premium";
@@ -226,10 +227,10 @@ export function HealthInsightsPage() {
     return sorted.map((m, idx) => {
       const d = new Date(m.created_at);
       const dayLabel = !isNaN(d.getTime())
-        ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        ? formatDate(d, { month: "short", day: "numeric" })
         : `Log ${idx + 1}`;
       const timeLabel = !isNaN(d.getTime())
-        ? d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+        ? formatTime(d, { hour: "2-digit", minute: "2-digit" })
         : "";
       const meta = MOOD_SCORES[m.mood.toLowerCase()] || {
         score: 3,
@@ -398,7 +399,7 @@ export function HealthInsightsPage() {
     if (cycles.length > 0 && analytics?.cycle_insights?.next_period_prediction) {
       const predDate = new Date(analytics.cycle_insights.next_period_prediction);
       const formattedDate = !isNaN(predDate.getTime())
-        ? predDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+        ? formatDate(predDate, { month: "short", day: "numeric" })
         : analytics.cycle_insights.next_period_prediction;
       list.push({
         id: "cycle-tracking",
@@ -992,7 +993,7 @@ export function HealthInsightsPage() {
                       </p>
                       <p className="mt-3 text-[10px] font-semibold text-muted">
                         Recorded on{" "}
-                        {new Date(journals[0].created_at).toLocaleDateString(undefined, {
+                        {formatDate(journals[0].created_at, {
                           month: "short",
                           day: "numeric",
                         })}

@@ -2,10 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  App-wide design tokens (`--nh-*`), derived from the landing page palette in
+  `@/theme/tokens.ts`. `@/theme/themeStore` re-applies these to `<html>` at
+  runtime for the active mode; the blocks below are the pre-paint fallbacks so
+  the document is styled correctly before JavaScript runs. Values are RGB
+  triplets so Tailwind can compose them as `rgb(var(--nh-…) / <alpha-value>)`.
+*/
 @layer base {
   :root {
-    color: #492653;
-    background: #FFFCFA;
+    --nh-bg: 255 248 250;
+    --nh-bg2: 253 239 243;
+    --nh-surface: 255 255 255;
+    --nh-ink: 58 39 80;
+    --nh-muted: 110 92 134;
+    --nh-blush: 248 221 229;
+    --nh-blush2: 246 217 210;
+    --nh-lav: 227 217 248;
+    --nh-lav2: 241 235 252;
+    --nh-lilac: 185 165 236;
+    --nh-rose: 201 133 120;
+    --nh-rosedeep: 154 85 96;
+    --nh-line: 238 221 230;
+    --nh-glow: 201 133 120;
+    --nh-onink: 255 248 250;
+    --nh-onbrand: 255 255 255;
+    --nh-accent: 122 95 196;
+    --nh-primary: 154 85 96;
+    --nh-primary-hover: 135 73 83;
+    --nh-primary-light: 241 235 252;
+    --nh-secondary: 185 165 236;
+    --nh-secondary-hover: 169 143 227;
+    --nh-secondary-light: 227 217 248;
+    --nh-mint: 13 148 136;
+    --nh-teal: 15 118 110;
+    --nh-sky: 56 189 248;
+    --nh-amber: 217 119 6;
+    --nh-success: 16 185 129;
+    --nh-warning: 245 158 11;
+    --nh-danger: 220 38 38;
+    --nh-lavender-50: 250 243 247;
+    --nh-lavender-100: 245 231 238;
+    --nh-lavender-200: 234 211 224;
+    --nh-lavender-300: 217 178 198;
+    --nh-lavender-400: 196 143 169;
+    --nh-lavender-500: 185 165 236;
+    --nh-lavender-600: 169 143 227;
+    --nh-lavender-700: 154 85 96;
+    --nh-lavender-800: 126 68 80;
+    --nh-lavender-900: 92 51 80;
+    --nh-lavender-950: 58 39 80;
+
+    color-scheme: light;
+    color: rgb(var(--nh-ink));
+    background: rgb(var(--nh-bg));
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -13,8 +63,51 @@
   }
 
   .dark {
-    color: #F8F7FF;
-    background: #1A1020;
+    --nh-bg: 27 20 48;
+    --nh-bg2: 36 26 61;
+    --nh-surface: 43 33 72;
+    --nh-ink: 246 238 255;
+    --nh-muted: 196 181 222;
+    --nh-blush: 74 42 79;
+    --nh-blush2: 90 51 88;
+    --nh-lav: 58 44 99;
+    --nh-lav2: 50 38 90;
+    --nh-lilac: 143 120 216;
+    --nh-rose: 227 168 156;
+    --nh-rosedeep: 242 169 184;
+    --nh-line: 63 49 98;
+    --nh-glow: 183 156 242;
+    --nh-onink: 42 29 69;
+    --nh-onbrand: 42 29 69;
+    --nh-accent: 187 164 255;
+    --nh-primary: 242 169 184;
+    --nh-primary-hover: 247 190 197;
+    --nh-primary-light: 50 38 90;
+    --nh-secondary: 143 120 216;
+    --nh-secondary-hover: 125 99 201;
+    --nh-secondary-light: 58 44 99;
+    --nh-mint: 45 212 191;
+    --nh-teal: 45 212 191;
+    --nh-sky: 125 211 252;
+    --nh-amber: 251 191 36;
+    --nh-success: 52 211 153;
+    --nh-warning: 251 191 36;
+    --nh-danger: 248 113 113;
+    --nh-lavender-50: 42 31 69;
+    --nh-lavender-100: 51 39 88;
+    --nh-lavender-200: 63 49 98;
+    --nh-lavender-300: 201 183 240;
+    --nh-lavender-400: 169 143 227;
+    --nh-lavender-500: 143 120 216;
+    --nh-lavender-600: 125 99 201;
+    --nh-lavender-700: 107 84 168;
+    --nh-lavender-800: 216 204 236;
+    --nh-lavender-900: 237 228 249;
+    --nh-lavender-950: 43 33 72;
+
+    color-scheme: dark;
+    color: rgb(var(--nh-ink));
+    background: rgb(var(--nh-bg));
   }
 
   body {
@@ -22,8 +115,8 @@
     min-width: 320px;
     min-height: 100vh;
     overflow-x: hidden;
-    background: #FFFCFA;
-    color: #492653;
+    background: rgb(var(--nh-bg));
+    color: rgb(var(--nh-ink));
   }
 
   button,
@@ -33,9 +126,9 @@
     font: inherit;
   }
 
-  /* Accessible focus indicators */
+  /* Accessible focus indicators (matches the landing page's lilac ring). */
   :focus-visible {
-    outline: 2px solid #633B73;
+    outline: 2px solid rgb(var(--nh-accent));
     outline-offset: 2px;
   }
 }
@@ -43,16 +136,20 @@
 @layer utilities {
   .glass {
     background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 252, 250, 0.85)),
-      rgba(255, 255, 255, 0.88);
-    border: 1px solid rgba(237, 228, 243, 0.9);
-    box-shadow: 0 16px 48px rgba(99, 59, 115, 0.08);
+      linear-gradient(
+        145deg,
+        rgb(var(--nh-surface) / 0.92),
+        rgb(var(--nh-bg) / 0.85)
+      ),
+      rgb(var(--nh-surface) / 0.88);
+    border: 1px solid rgb(var(--nh-line) / 0.9);
+    box-shadow: 0 16px 48px rgb(var(--nh-glow) / 0.14);
     backdrop-filter: blur(24px);
   }
 
   .dark .glass {
-    background: rgba(26, 20, 48, 0.85);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgb(var(--nh-surface) / 0.85);
+    border-color: rgb(255 255 255 / 0.1);
   }
 
   .gradient-border {
@@ -65,39 +162,52 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(99, 59, 115, 0.45), rgba(171, 143, 199, 0.35), rgba(255, 255, 255, 0.8));
+    background: linear-gradient(
+      135deg,
+      rgb(var(--nh-rosedeep) / 0.45),
+      rgb(var(--nh-lilac) / 0.35),
+      rgb(var(--nh-surface) / 0.8)
+    );
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
   }
 
+  /* Application shell backdrop: a soft blush/lilac wash over the base tone. */
   .premium-gradient {
     background:
-      linear-gradient(135deg, rgba(201, 169, 207, 0.28), transparent 32%),
-      linear-gradient(225deg, rgba(237, 228, 243, 0.5), transparent 38%),
-      linear-gradient(180deg, rgba(201, 133, 120, 0.06), transparent 44%),
-      linear-gradient(135deg, #F8E8EF 0%, #FFFFFF 46%, #FFFCFA 100%);
+      radial-gradient(1100px 520px at 8% -6%, rgb(var(--nh-blush) / 0.85), transparent 60%),
+      radial-gradient(900px 480px at 100% 0%, rgb(var(--nh-lav2) / 0.9), transparent 58%),
+      radial-gradient(760px 520px at 50% 118%, rgb(var(--nh-lilac) / 0.16), transparent 62%),
+      rgb(var(--nh-bg));
   }
 
   .dark .premium-gradient {
     background:
-      linear-gradient(135deg, rgba(99, 59, 115, 0.35), transparent 34%),
-      linear-gradient(225deg, rgba(171, 143, 199, 0.16), transparent 36%),
-      linear-gradient(135deg, #1A1020 0%, #241423 52%, #160C1B 100%);
+      radial-gradient(1100px 520px at 8% -6%, rgb(var(--nh-blush) / 0.5), transparent 60%),
+      radial-gradient(900px 480px at 100% 0%, rgb(var(--nh-lav) / 0.45), transparent 58%),
+      radial-gradient(760px 520px at 50% 118%, rgb(var(--nh-accent) / 0.12), transparent 62%),
+      rgb(var(--nh-bg));
   }
 
   .soft-grid {
     background-image:
-      linear-gradient(rgba(99, 59, 115, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(99, 59, 115, 0.05) 1px, transparent 1px);
+      linear-gradient(rgb(var(--nh-rosedeep) / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--nh-rosedeep) / 0.05) 1px, transparent 1px);
     background-size: 28px 28px;
+  }
+
+  .dark .soft-grid {
+    background-image:
+      linear-gradient(rgb(var(--nh-lilac) / 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--nh-lilac) / 0.08) 1px, transparent 1px);
   }
 
   .noise {
     background-image:
-      linear-gradient(135deg, rgba(99, 59, 115, 0.06), transparent 36%),
-      linear-gradient(225deg, rgba(171, 143, 199, 0.06), transparent 42%);
+      linear-gradient(135deg, rgb(var(--nh-rosedeep) / 0.06), transparent 36%),
+      linear-gradient(225deg, rgb(var(--nh-lilac) / 0.06), transparent 42%);
   }
 
   .surface-shine {
@@ -109,7 +219,12 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(120deg, rgba(255, 255, 255, 0.35), transparent 34%, rgba(255, 255, 255, 0.15));
+    background: linear-gradient(
+      120deg,
+      rgb(var(--nh-surface) / 0.18),
+      transparent 34%,
+      rgb(var(--nh-surface) / 0.08)
+    );
     pointer-events: none;
   }
 
