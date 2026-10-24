@@ -83,6 +83,24 @@ export type ChatMessage = {
   created_at: string;
   sources?: ChatSource[];
 };
+export type CaregiverChatSource = {
+  id: string;
+  title: string;
+  publisher: string;
+  page: number;
+  excerpt: string;
+};
+export type CaregiverChatResponse = {
+  id: string;
+  message: string;
+  response: string;
+  language: string;
+  sources: CaregiverChatSource[];
+  clinical_disclaimer: string;
+  has_maternal_data: boolean;
+  maternal_consent_status?: string | null;
+  created_at: string;
+};
 export type CaregiverContent = { id: string; title: string; description: string; video_url: string | null; category: string; created_at: string };
 export type Alert = { id: string; user_id: string; message: string; sent_status: string; sent_at: string | null };
 export type DashboardStats = { today_mood: Mood | null; symptoms: Symptom | null; cycle_prediction: string | null; pcos_risk: string | null; ppd_status: string | null };
@@ -509,6 +527,18 @@ export const api = {
   // Chat & AI Coach
   chatHistory: () => request<ChatMessage[]>("/chat/history"),
   sendChat: (message: string, language: string) => request<ChatMessage>("/chat/message", { method: "POST", body: JSON.stringify({ message, language }) }),
+
+  // Caregiver Isolated RAG Chatbot
+  caregiverChat: (message: string, language: string) =>
+    request<CaregiverChatResponse>("/caregiver/chat/message", {
+      method: "POST",
+      body: JSON.stringify({ message, language }),
+    }),
+  caregiverChatHistory: () => request<CaregiverChatResponse[]>("/caregiver/chat/history"),
+  clearCaregiverChatHistory: () =>
+    request<{ message: string; deleted_count: number }>("/caregiver/chat/history", {
+      method: "DELETE",
+    }),
 
   // Nutrition Guide & Hydration & Myths
   myNutrition: () => request<MotherNutritionData>("/nutrition/me"),

@@ -91,13 +91,27 @@ GOOGLE_KEYWORD_MAP: dict[str, str] = {
     "obstetrics": "obstetrician maternity hospital",
     "mental_health": "psychiatrist psychologist mental health clinic counseling",
     "maternity": "maternity hospital birthing center",
-    "hospital": "hospital multi-specialty",
+    "hospital": "hospital",
     "pharmacy": "pharmacy medical store chemist",
     "clinic": "clinic medical doctor",
     "diagnostic_lab": "diagnostic center medical laboratory blood test",
     "general": "general physician clinic family doctor",
     "emergency": "emergency hospital casualty trauma center",
 }
+
+OSM_KEYWORD_MAP: dict[str, str] = {
+    "gynaecology": "gynaecologist hospital clinic",
+    "obstetrics": "maternity hospital obstetrician",
+    "mental_health": "mental health clinic hospital",
+    "maternity": "maternity hospital",
+    "hospital": "hospital",
+    "pharmacy": "pharmacy",
+    "clinic": "clinic",
+    "diagnostic_lab": "diagnostic laboratory clinic",
+    "general": "hospital clinic",
+    "emergency": "emergency hospital",
+}
+
 
 
 def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -292,28 +306,26 @@ class HerReachService:
         encoded_query = urllib.parse.quote_plus(query_for_map)
         external_search_url = f"https://www.google.com/maps/search/?api=1&query={encoded_query}"
 
-        # If Google Maps API key is NOT configured, return truthful graceful fallback
-        if not api_key or not api_key.strip():
-            return FacilitySearchResponse(
-                is_live_provider=False,
-                provider_status=(
-                    "Google Maps Places API key is not configured in the backend environment (GOOGLE_MAPS_API_KEY). "
-                    "Live nearby facility queries require this key to be set. You can use direct Google Maps "
-                    "navigation links and verified public emergency helplines below."
-                ),
-                total_found=0,
-                query=query,
-                category=search_category,
-                location_searched=location_label or None,
-                external_search_url=external_search_url,
-                facilities=[],
-                official_helplines=OFFICIAL_HELPLINES,
-            )
+        # 1. If Google Maps API key IS configured, execute real Google Places search first
+        if api_key and api_key.strip():
+            try:
+                return await self._query_google_places(
+                    api_key=api_key.strip(),
+                    query=query,
+                    category=search_category,
+                    lat=lat,
+                    lng=lng,
+                    area=area,
+                    radius_meters=radius_meters,
+                    external_search_url=external_search_url,
+                    location_label=location_label,
+                )
+            except Exception as exc:
+                logger.warning("Google Places search encountered error: %s; falling back to OpenStreetMap", exc)
 
-        # If Google Maps API key IS configured, execute real Google Places search
+        # 2. No-Google-key fallback: OpenStreetMap (Nominatim)
         try:
-            return await self._query_google_places(
-                api_key=api_key.strip(),
+            return await self._query_osm_nominatim(
                 query=query,
                 category=search_category,
                 lat=lat,
@@ -324,10 +336,14 @@ class HerReachService:
                 location_label=location_label,
             )
         except Exception as exc:
-            # Handle provider error gracefully without breaking the app
+            logger.warning("OpenStreetMap fallback query failed: %s", exc)
             return FacilitySearchResponse(
                 is_live_provider=False,
-                provider_status=f"Provider connection error: {str(exc)}. Direct Google Maps navigation is available below.",
+                provider_status=(
+                    "Live healthcare facility search is currently unavailable. Direct Google Maps navigation "
+                    "links and verified emergency helplines are provided below."
+                ),
+                provider_name="OpenStreetMap (Nominatim)",
                 total_found=0,
                 query=query,
                 category=search_category,
@@ -356,10 +372,17 @@ class HerReachService:
         async with httpx.AsyncClient(timeout=10.0) as client:
             # If coordinates are missing but manual area is provided, geocode area first
             if (resolved_lat is None or resolved_lng is None) and area and area.strip():
+                clean_area = area.strip()
                 geocode_url = "https://maps.googleapis.com/maps/api/geocode/json"
+                geo_params: dict[str, Any] = {"address": clean_area, "key": api_key}
+                if clean_area.isdigit() and len(clean_area) == 6:
+                    geo_params["components"] = f"country:IN|postal_code:{clean_area}"
+                elif not any(c in clean_area.lower() for c in ["india", "bharat"]):
+                    geo_params["components"] = "country:IN"
+
                 geo_resp = await client.get(
                     geocode_url,
-                    params={"address": area.strip(), "key": api_key},
+                    params=geo_params,
                 )
                 if geo_resp.status_code == 200:
                     geo_data = geo_resp.json()
@@ -374,8 +397,9 @@ class HerReachService:
             search_text = f"{query.strip()} {keyword}".strip() if query else keyword
 
             places_url = "https://places.googleapis.com/v1/places:searchText"
+            effective_text_query = f"{search_text} {area.strip()}".strip() if area and area.strip() else search_text
             request_body: dict[str, Any] = {
-                "textQuery": search_text,
+                "textQuery": effective_text_query,
                 "maxResultCount": 20,
             }
             if resolved_lat is not None and resolved_lng is not None:
@@ -388,9 +412,6 @@ class HerReachService:
                         "radius": radius_meters,
                     }
                 }
-            else:
-                if area and area.strip():
-                    request_body["textQuery"] = f"{search_text} {area.strip()}"
 
             places_resp = await client.post(
                 places_url,
@@ -494,6 +515,185 @@ class HerReachService:
             return FacilitySearchResponse(
                 is_live_provider=True,
                 provider_status="Live Google Places API search successful.",
+                total_found=len(facilities),
+                query=query,
+                category=category,
+                location_searched=location_label or None,
+                external_search_url=external_search_url,
+                facilities=facilities,
+                official_helplines=OFFICIAL_HELPLINES,
+            )
+
+    async def _query_osm_nominatim(
+        self,
+        query: str | None,
+        category: str,
+        lat: float | None,
+        lng: float | None,
+        area: str | None,
+        radius_meters: int,
+        external_search_url: str,
+        location_label: str,
+    ) -> FacilitySearchResponse:
+        """
+        Query healthcare facilities using OpenStreetMap (Nominatim).
+        Requires zero API keys. Returns verified genuine healthcare facilities.
+        """
+        osm_term = OSM_KEYWORD_MAP.get(category, "hospital")
+        clean_query = query.strip() if query and query.strip() else ""
+        clean_area = area.strip() if area and area.strip() else ""
+
+        headers = {
+            "User-Agent": "NurtureHerHealthcareApp/1.0 (maternal-health-support; contact@nurtureher.org)",
+            "Accept": "application/json",
+        }
+
+        resolved_lat = lat
+        resolved_lng = lng
+
+        async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
+            # 1. Geocode area if coordinates are not provided
+            if (resolved_lat is None or resolved_lng is None) and clean_area:
+                geo_params: dict[str, Any] = {"format": "json", "limit": 1}
+                if clean_area.isdigit() and len(clean_area) == 6:
+                    geo_params["postalcode"] = clean_area
+                    geo_params["country"] = "India"
+                else:
+                    geo_params["q"] = clean_area
+                    geo_params["countrycodes"] = "in"
+
+                try:
+                    geo_resp = await client.get("https://nominatim.openstreetmap.org/search", params=geo_params)
+                    if geo_resp.status_code == 200:
+                        geo_data = geo_resp.json()
+                        if isinstance(geo_data, list) and len(geo_data) > 0:
+                            resolved_lat = float(geo_data[0]["lat"])
+                            resolved_lng = float(geo_data[0]["lon"])
+                except Exception as exc:
+                    logger.warning("OSM geocoding failed for area %s: %s", clean_area, exc)
+
+            items: list[dict[str, Any]] = []
+
+            # 2. Search within bounding viewbox if coordinates are available
+            if resolved_lat is not None and resolved_lng is not None:
+                delta_deg = max(0.045, min(radius_meters / 111000.0, 0.15))
+                viewbox = f"{resolved_lng - delta_deg:.5f},{resolved_lat + delta_deg:.5f},{resolved_lng + delta_deg:.5f},{resolved_lat - delta_deg:.5f}"
+                search_q = f"{clean_query} {osm_term}".strip() if clean_query else osm_term
+                search_params = {
+                    "q": search_q,
+                    "format": "json",
+                    "viewbox": viewbox,
+                    "bounded": 1,
+                    "addressdetails": 1,
+                    "extratags": 1,
+                    "countrycodes": "in",
+                    "limit": 20,
+                }
+                resp = await client.get("https://nominatim.openstreetmap.org/search", params=search_params)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, list):
+                        items = data
+
+            # 3. Fallback text search if viewbox returned 0 results or coordinates were unavailable
+            if not items and (clean_query or clean_area):
+                fallback_parts: list[str] = []
+                if clean_query:
+                    fallback_parts.append(clean_query)
+                fallback_parts.append(osm_term)
+                if clean_area:
+                    fallback_parts.append(f"in {clean_area}, India")
+                fallback_q = " ".join(fallback_parts)
+
+                resp2 = await client.get(
+                    "https://nominatim.openstreetmap.org/search",
+                    params={
+                        "q": fallback_q,
+                        "format": "json",
+                        "addressdetails": 1,
+                        "extratags": 1,
+                        "countrycodes": "in",
+                        "limit": 15,
+                    },
+                )
+                if resp2.status_code == 200:
+                    data2 = resp2.json()
+                    if isinstance(data2, list):
+                        items = data2
+
+            # 4. Map results to FacilityItem
+            facilities: list[FacilityItem] = []
+            seen_ids: set[str] = set()
+
+            for item in items:
+                raw_id = f"osm/{item.get('osm_type', 'node')}/{item.get('osm_id', item.get('place_id', len(facilities)))}"
+                if raw_id in seen_ids:
+                    continue
+                seen_ids.add(raw_id)
+
+                name = item.get("name") or (item.get("display_name", "").split(",")[0].strip())
+                if not name:
+                    continue
+
+                f_lat: float | None = None
+                f_lng: float | None = None
+                try:
+                    if "lat" in item and item["lat"] is not None:
+                        f_lat = float(item["lat"])
+                    if "lon" in item and item["lon"] is not None:
+                        f_lng = float(item["lon"])
+                except (ValueError, TypeError):
+                    pass
+
+                # Calculate distance only if user supplied device coordinates
+                dist: float | None = None
+                if lat is not None and lng is not None and f_lat is not None and f_lng is not None:
+                    dist = haversine_distance_km(lat, lng, f_lat, f_lng)
+
+                extratags = item.get("extratags") or {}
+                contact = extratags.get("phone") or extratags.get("contact:phone") or extratags.get("contact:mobile")
+                opening = extratags.get("opening_hours")
+
+                directions_url = (
+                    f"https://www.google.com/maps/dir/?api=1&destination={f_lat:.5f},{f_lng:.5f}"
+                    if f_lat is not None and f_lng is not None
+                    else external_search_url
+                )
+
+                item_type = str(item.get("type", "")).lower()
+                is_emergency = category == "emergency" or "hospital" in item_type or "emergency" in item_type
+
+                facilities.append(
+                    FacilityItem(
+                        id=raw_id,
+                        name=name,
+                        facility_type=CATEGORY_LABELS.get(category, "Multi-specialty Hospitals & Emergency Care"),
+                        address=item.get("display_name", "Address not specified"),
+                        lat=f_lat,
+                        lng=f_lng,
+                        distance_km=dist,
+                        contact_number=contact,
+                        opening_hours=opening,
+                        directions_url=directions_url,
+                        rating=None,
+                        user_ratings_total=None,
+                        is_emergency=is_emergency,
+                    )
+                )
+
+            # Sort by distance if available
+            facilities.sort(key=lambda f: f.distance_km if f.distance_km is not None else 9999.0)
+
+            provider_status = (
+                f"Found {len(facilities)} verified facilities via OpenStreetMap (Nominatim) directory."
+                if facilities
+                else "No matching facilities found in OpenStreetMap for this search area."
+            )
+
+            return FacilitySearchResponse(
+                is_live_provider=True,
+                provider_status=provider_status,
+                provider_name="OpenStreetMap (Nominatim)",
                 total_found=len(facilities),
                 query=query,
                 category=category,

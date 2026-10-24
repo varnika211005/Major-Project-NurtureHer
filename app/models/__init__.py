@@ -1,6 +1,7 @@
 from app.models.audit import AuditLog, RefreshToken
 from app.models.asha import Alert, HighRiskCase
 from app.models.caregiver import CaregiverContent
+from app.models.caregiver_chat import CaregiverChatMessage
 from app.models.carecircle import CareCircleAccess, CareCircleQR
 from app.models.chat import ChatMessage
 from app.models.doctor import DoctorNote, DoctorPatient
@@ -16,6 +17,7 @@ __all__ = [
     "AuditLog",
     "CareCircleAccess",
     "CareCircleQR",
+    "CaregiverChatMessage",
     "CaregiverContent",
     "ChatMessage",
     "Cycle",

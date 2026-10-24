@@ -105,7 +105,10 @@ export default function App() {
                 </RequireRole>
               }
             />
-            <Route path="/coach" element={<Coach />} />
+            <Route
+              path="/coach"
+              element={user.role === "caregiver" ? <Navigate to="/caregiver?tab=coach" replace /> : <Coach />}
+            />
             <Route path="/chat-history" element={<ChatHistoryPage />} />
             <Route
               path="/cycle"

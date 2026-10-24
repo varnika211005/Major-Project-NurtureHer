@@ -1,8 +1,9 @@
-import { AlertTriangle, Baby, BookOpen, CheckCircle2, Clock, Compass, Download, ExternalLink, HardDrive, Heart, Info, LocateFixed, Lock, MapPin, Navigation, Phone, PhoneCall, Play, PlayCircle, QrCode, RefreshCw, Search, ShieldAlert, Trash2, UserCheck, Video, Wifi, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, Baby, BookOpen, Bot, CheckCircle2, Clock, Compass, Download, ExternalLink, HardDrive, Heart, Info, LocateFixed, Lock, MapPin, Navigation, Phone, PhoneCall, Play, PlayCircle, QrCode, RefreshCw, Search, ShieldAlert, Trash2, UserCheck, Video, Wifi, X } from "lucide-react";
+import { useEffect, useRef, useState, useContext } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CareCircleConnect } from "@/components/CareCircleConnect";
-import { api, CaregiverContent, ChatMessage, EducationalResource, FacilityItem, OfficialHelpline } from "@/lib/api";
+import { CaregiverChat } from "@/components/caregiver/CaregiverChat";
+import { api, ChatMessage, EducationalResource, FacilityItem, OfficialHelpline } from "@/lib/api";
 import {
   OfflineResourceRecord,
   downloadVideoForOffline,
@@ -13,7 +14,6 @@ import {
 import { Page } from "@/components/common/Page";
 import { SectionHeader } from "@/components/common/Premium";
 import { EmptyState, ErrorState, LoadingSkeleton } from "@/components/common/States";
-import { useContext } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,6 +26,55 @@ const OBSOLETE_VIDEO_URLS = [
   "prenatal_breathing_exercise.mp4",
   "trimester1_care_guide.mp4",
 ];
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  hi: "Hindi",
+  kn: "Kannada",
+  ta: "Tamil",
+  te: "Telugu",
+  ml: "Malayalam",
+};
+
+const DEFAULT_TASKS: Record<string, boolean> = {
+  task1: false,
+  task2: false,
+  task3: false,
+  task4: false,
+  task5: false,
+};
+
+function getTodayStorageKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `caregiver_daily_tasks_${year}-${month}-${day}`;
+}
+
+function loadInitialCheckedTasks(): Record<string, boolean> {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return DEFAULT_TASKS;
+  }
+  try {
+    const raw = localStorage.getItem(getTodayStorageKey());
+    if (!raw) return DEFAULT_TASKS;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const map: Record<string, boolean> = { ...DEFAULT_TASKS };
+      parsed.forEach((id: string) => {
+        map[id] = true;
+      });
+      return map;
+    }
+    if (parsed && typeof parsed === "object") {
+      return { ...DEFAULT_TASKS, ...parsed };
+    }
+  } catch {
+    // Malformed JSON fallback
+  }
+  return DEFAULT_TASKS;
+}
 
 function isObsoleteVideoUrl(url?: string | null): boolean {
   if (!url) return false;
@@ -54,12 +103,18 @@ export function CaregiverPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const language = useCurrentLanguageSafe();
-  const [items, setItems] = useState<CaregiverContent[]>([]);
   const [availableVideos, setAvailableVideos] = useState<EducationalResource[]>([]);
+  const [availableArticles, setAvailableArticles] = useState<EducationalResource[]>([]);
   const [educationalVideo, setEducationalVideo] = useState<EducationalResource | null>(null);
   const [educationalArticle, setEducationalArticle] = useState<EducationalResource | null>(null);
   const [offlineRecords, setOfflineRecords] = useState<OfflineResourceRecord[]>([]);
   const [downloadTasks, setDownloadTasks] = useState<Record<string, { progress: number; controller: AbortController }>>({});
+  const [savingArticleIds, setSavingArticleIds] = useState<Record<string, boolean>>({});
+  const [offlineFeedback, setOfflineFeedback] = useState<{
+    resourceId: string;
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const [playingVideo, setPlayingVideo] = useState<{
     resource?: EducationalResource;
     offlineRecord?: OfflineResourceRecord;
@@ -76,8 +131,12 @@ export function CaregiverPage() {
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[] | null>(null);
   const [chatHistoryDenied, setChatHistoryDenied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"education" | "warning-signs" | "support-checklist" | "shared-status" | "connect" | "herreach">(
-    searchParams.get("tab") === "connect" ? "connect" : "education",
+  const [activeTab, setActiveTab] = useState<"education" | "warning-signs" | "support-checklist" | "shared-status" | "connect" | "herreach" | "coach">(
+    searchParams.get("tab") === "connect"
+      ? "connect"
+      : searchParams.get("tab") === "coach"
+        ? "coach"
+        : "education",
   );
   const [loading, setLoading] = useState(true);
 
@@ -95,17 +154,14 @@ export function CaregiverPage() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get("tab") === "connect") setActiveTab("connect");
+    const tab = searchParams.get("tab");
+    if (tab === "connect") setActiveTab("connect");
+    else if (tab === "coach") setActiveTab("coach");
+    else if (tab === "herreach") setActiveTab("herreach");
   }, [searchParams]);
 
-  // Daily support checklist state
-  const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({
-    task1: true,
-    task2: false,
-    task3: false,
-    task4: false,
-    task5: false,
-  });
+  // Daily support checklist state with date-specific persistence
+  const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>(loadInitialCheckedTasks);
 
   useEffect(() => {
     async function loadCaregiverData() {
@@ -126,29 +182,43 @@ export function CaregiverPage() {
           (r) => r.content_type === "article" && r.is_published,
         );
         setAvailableVideos(publishedVideos);
+        setAvailableArticles(publishedArticles);
 
-        // Card A: Caregiver Educational Video
-        // Default English preference resolves strictly to NurtureHer-English.mp4
-        // Regional languages resolve to the corresponding intended multilingual video
+        // Card A: Caregiver Educational Video matching active language
         const activeLang = (language || "en").toLowerCase();
         let video =
           publishedVideos.find((v) => v.language && v.language.toLowerCase() === activeLang) ||
-          publishedVideos.find((v) => v.video_url?.includes("NurtureHer-English.mp4")) ||
-          publishedVideos.find((v) => v.language && v.language.toLowerCase() === "en") ||
-          publishedVideos[0] ||
+          (activeLang === "en"
+            ? publishedVideos.find((v) => v.video_url?.includes("NurtureHer-English.mp4")) ||
+              publishedVideos.find((v) => v.language && v.language.toLowerCase() === "en") ||
+              publishedVideos[0]
+            : null) ||
           null;
 
-        // Card B: Caregiver Educational Article
-        // Prioritize Postpartum recovery, Newborn care, or Emergency warning signs
-        let article =
-          publishedArticles.find(
-            (a) =>
-              a.category.toLowerCase().includes("postpartum") ||
-              a.category.toLowerCase().includes("newborn") ||
-              a.category.toLowerCase().includes("warning"),
-          ) ||
-          publishedArticles[0] ||
-          null;
+        // Card B: Caregiver Educational Article matching active language
+        const langArticles = publishedArticles.filter(
+          (a) => a.language && a.language.toLowerCase() === activeLang,
+        );
+        let article: EducationalResource | null = null;
+        if (langArticles.length > 0) {
+          article =
+            langArticles.find(
+              (a) =>
+                a.category.toLowerCase().includes("postpartum") ||
+                a.category.toLowerCase().includes("newborn") ||
+                a.category.toLowerCase().includes("warning"),
+            ) || langArticles[0];
+        } else if (activeLang === "en") {
+          article =
+            publishedArticles.find(
+              (a) =>
+                a.category.toLowerCase().includes("postpartum") ||
+                a.category.toLowerCase().includes("newborn") ||
+                a.category.toLowerCase().includes("warning"),
+            ) ||
+            publishedArticles[0] ||
+            null;
+        }
 
         // Offline fallback if network is unavailable
         if (!video && offlineRecs.length > 0) {
@@ -178,21 +248,51 @@ export function CaregiverPage() {
     void loadCaregiverData();
   }, []);
 
-  // Update educational video dynamically when application language preference changes
+  // Update educational video and article dynamically when application language preference changes
   useEffect(() => {
-    if (availableVideos.length === 0) return;
+    if (availableVideos.length === 0 && availableArticles.length === 0) return;
     const activeLang = (language || "en").toLowerCase();
-    const matched =
+
+    const matchedVideo =
       availableVideos.find((v) => v.language && v.language.toLowerCase() === activeLang) ||
-      availableVideos.find((v) => v.video_url?.includes("NurtureHer-English.mp4")) ||
-      availableVideos.find((v) => v.language && v.language.toLowerCase() === "en") ||
-      availableVideos[0];
-    if (matched) {
-      setEducationalVideo(matched);
+      (activeLang === "en"
+        ? availableVideos.find((v) => v.video_url?.includes("NurtureHer-English.mp4")) ||
+          availableVideos.find((v) => v.language && v.language.toLowerCase() === "en") ||
+          availableVideos[0]
+        : null) ||
+      null;
+
+    const langArticles = availableArticles.filter(
+      (a) => a.language && a.language.toLowerCase() === activeLang,
+    );
+    let matchedArticle: EducationalResource | null = null;
+    if (langArticles.length > 0) {
+      matchedArticle =
+        langArticles.find(
+          (a) =>
+            a.category.toLowerCase().includes("postpartum") ||
+            a.category.toLowerCase().includes("newborn") ||
+            a.category.toLowerCase().includes("warning"),
+        ) || langArticles[0];
+    } else if (activeLang === "en") {
+      matchedArticle =
+        availableArticles.find(
+          (a) =>
+            a.category.toLowerCase().includes("postpartum") ||
+            a.category.toLowerCase().includes("newborn") ||
+            a.category.toLowerCase().includes("warning"),
+        ) ||
+        availableArticles[0] ||
+        null;
     }
-  }, [language, availableVideos]);
+
+    setEducationalVideo(matchedVideo);
+    setEducationalArticle(matchedArticle);
+  }, [language, availableVideos, availableArticles]);
 
   const handleDownloadVideo = async (resource: EducationalResource) => {
+    if (downloadTasks[resource.id] || offlineMap.has(resource.id)) return;
+    setOfflineFeedback(null);
     const controller = new AbortController();
     setDownloadTasks((prev) => ({
       ...prev,
@@ -216,8 +316,31 @@ export function CaregiverPage() {
 
       const refreshed = await getAllOfflineRecords();
       setOfflineRecords(refreshed);
-    } catch {
-      // Abort or error handled in store
+      setOfflineFeedback({
+        resourceId: resource.id,
+        type: "success",
+        message: "Video saved to offline library successfully.",
+      });
+    } catch (err: unknown) {
+      if (controller.signal.aborted) {
+        setOfflineFeedback({
+          resourceId: resource.id,
+          type: "error",
+          message: "Video download cancelled.",
+        });
+      } else {
+        const errorMsg =
+          err instanceof Error
+            ? (err.name === "QuotaExceededError" || err.message.toLowerCase().includes("quota")
+                ? "Device storage quota exceeded. Free space to download offline video."
+                : err.message || "Failed to download video. Please check your internet connection.")
+            : "Failed to download video. Please check your internet connection.";
+        setOfflineFeedback({
+          resourceId: resource.id,
+          type: "error",
+          message: errorMsg,
+        });
+      }
     } finally {
       setDownloadTasks((prev) => {
         const updated = { ...prev };
@@ -235,19 +358,49 @@ export function CaregiverPage() {
   };
 
   const handleSaveArticle = async (resource: EducationalResource) => {
+    if (savingArticleIds[resource.id] || offlineMap.has(resource.id)) return;
+    setOfflineFeedback(null);
+    setSavingArticleIds((prev) => ({ ...prev, [resource.id]: true }));
     try {
       await saveArticleForOffline(resource);
       const refreshed = await getAllOfflineRecords();
       setOfflineRecords(refreshed);
-    } catch {
-      // Storage error
+      setOfflineFeedback({
+        resourceId: resource.id,
+        type: "success",
+        message: "Article saved to offline library successfully.",
+      });
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error
+          ? (err.name === "QuotaExceededError" || err.message.toLowerCase().includes("quota")
+              ? "Device storage quota exceeded. Free space to save offline article."
+              : `Failed to save article: ${err.message}`)
+          : "Failed to save article offline.";
+      setOfflineFeedback({
+        resourceId: resource.id,
+        type: "error",
+        message: errorMsg,
+      });
+    } finally {
+      setSavingArticleIds((prev) => {
+        const updated = { ...prev };
+        delete updated[resource.id];
+        return updated;
+      });
     }
   };
 
   const handleRemoveOffline = async (resourceId: string) => {
+    setOfflineFeedback(null);
     await removeOfflineResource(resourceId);
     const refreshed = await getAllOfflineRecords();
     setOfflineRecords(refreshed);
+    setOfflineFeedback({
+      resourceId,
+      type: "success",
+      message: "Removed from offline storage.",
+    });
   };
 
   const handlePlayVideo = (resource: EducationalResource) => {
@@ -312,7 +465,17 @@ export function CaregiverPage() {
   const activeConnection = connections.find((connection) => connection.access_id === selectedConnection);
 
   const toggleTask = (taskId: string) => {
-    setCheckedTasks((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
+    setCheckedTasks((prev) => {
+      const next = { ...prev, [taskId]: !prev[taskId] };
+      try {
+        if (typeof window !== "undefined" && window.localStorage) {
+          localStorage.setItem(getTodayStorageKey(), JSON.stringify(next));
+        }
+      } catch {
+        // Safe storage quota or disabled storage fallback
+      }
+      return next;
+    });
   };
 
   const WARNING_SIGNS = [
@@ -427,6 +590,18 @@ export function CaregiverPage() {
         >
           <Compass className="h-4 w-4 text-primary" /> HerReach Facility Finder
         </button>
+        <button
+          id="caregiver-coach-tab"
+          type="button"
+          onClick={() => setActiveTab("coach")}
+          className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-black transition ${
+            activeTab === "coach"
+              ? "bg-primary text-white shadow-glow"
+              : "bg-white text-ink hover:bg-lavender-50 dark:bg-white/10 dark:text-white"
+          }`}
+        >
+          <Bot className="h-4 w-4 text-primary" /> Care Companion AI
+        </button>
       </div>
 
       {loading ? (
@@ -503,7 +678,7 @@ export function CaregiverPage() {
               </div>
 
               {/* Exactly Two Educational Cards: Card A (Video) & Card B (Article) */}
-              {!educationalVideo && !educationalArticle ? (
+              {!educationalVideo && !educationalArticle && availableVideos.length === 0 && availableArticles.length === 0 ? (
                 <EmptyState
                   title="No Educational Resources Available"
                   text="No published educational guides or videos were found at this time."
@@ -511,7 +686,7 @@ export function CaregiverPage() {
               ) : (
                 <div className="grid gap-6 md:grid-cols-2">
                   {/* CARD A — EDUCATIONAL VIDEO */}
-                  {educationalVideo && (() => {
+                  {educationalVideo ? (() => {
                     const isOfflineSaved = offlineMap.has(educationalVideo.id);
                     const activeTask = downloadTasks[educationalVideo.id];
 
@@ -587,6 +762,35 @@ export function CaregiverPage() {
                           </div>
                         )}
 
+                        {/* User Feedback Alert for Video Operations */}
+                        {offlineFeedback && offlineFeedback.resourceId === educationalVideo.id && (
+                          <div
+                            role="status"
+                            className={`mt-3 flex items-center justify-between rounded-xl p-2.5 text-xs font-semibold ${
+                              offlineFeedback.type === "success"
+                                ? "border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200"
+                                : "border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {offlineFeedback.type === "success" ? (
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                              ) : (
+                                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                              )}
+                              <span>{offlineFeedback.message}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setOfflineFeedback(null)}
+                              className="ml-2 text-muted hover:text-ink dark:hover:text-white"
+                              aria-label="Dismiss feedback message"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+
                         {/* Card Action Buttons */}
                         <div className="mt-4 flex items-center gap-2">
                           <Button
@@ -624,7 +828,7 @@ export function CaregiverPage() {
                               size="sm"
                               className="gap-1.5"
                               onClick={() => handleDownloadVideo(educationalVideo)}
-                              disabled={!isOnline}
+                              disabled={!isOnline || Boolean(activeTask)}
                               title={!isOnline ? "Connect to internet to download" : "Download video for offline viewing"}
                             >
                               <Download className="h-3.5 w-3.5" />
@@ -634,11 +838,42 @@ export function CaregiverPage() {
                         </div>
                       </Card>
                     );
-                  })()}
+                  })() : (
+                    <Card className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-lavender-200/80 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+                            <Video className="h-3.5 w-3.5" />
+                            Caregiver Video
+                          </span>
+                          <span className="text-[11px] font-semibold text-muted">
+                            {LANGUAGE_NAMES[language] || language.toUpperCase()}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-black text-ink dark:text-white">
+                          Video in {LANGUAGE_NAMES[language] || language.toUpperCase()} Pending
+                        </h4>
+                        <p className="text-xs leading-5 text-muted dark:text-white/60">
+                          Educational demonstrations are currently verified in English, Hindi, Kannada, Tamil, Telugu, and Malayalam. You can explore all available series in the Resource Library.
+                        </p>
+                      </div>
+                      <div className="mt-4 flex items-center gap-2 border-t border-lavender-100 pt-3 dark:border-white/10">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="w-full text-xs font-bold"
+                          onClick={() => navigate("/library")}
+                        >
+                          Explore Resource Library
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
 
                   {/* CARD B — EDUCATIONAL ARTICLE */}
-                  {educationalArticle && (() => {
+                  {educationalArticle ? (() => {
                     const isOfflineSaved = offlineMap.has(educationalArticle.id);
+                    const isSaving = Boolean(savingArticleIds[educationalArticle.id]);
 
                     return (
                       <Card className="group relative flex flex-col overflow-hidden rounded-2xl border border-lavender-200/80 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5">
@@ -679,6 +914,35 @@ export function CaregiverPage() {
                           <span>{educationalArticle.review_date || "Current Guidance"}</span>
                         </div>
 
+                        {/* User Feedback Alert for Article Operations */}
+                        {offlineFeedback && offlineFeedback.resourceId === educationalArticle.id && (
+                          <div
+                            role="status"
+                            className={`mt-3 flex items-center justify-between rounded-xl p-2.5 text-xs font-semibold ${
+                              offlineFeedback.type === "success"
+                                ? "border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200"
+                                : "border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {offlineFeedback.type === "success" ? (
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                              ) : (
+                                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                              )}
+                              <span>{offlineFeedback.message}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setOfflineFeedback(null)}
+                              className="ml-2 text-muted hover:text-ink dark:hover:text-white"
+                              aria-label="Dismiss feedback message"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+
                         {/* Card Action Buttons */}
                         <div className="mt-4 flex items-center gap-2">
                           <Button
@@ -707,16 +971,47 @@ export function CaregiverPage() {
                               size="sm"
                               className="gap-1.5"
                               onClick={() => handleSaveArticle(educationalArticle)}
+                              disabled={isSaving}
                               title="Save article for offline reading"
                             >
                               <Download className="h-3.5 w-3.5" />
-                              Save Offline
+                              {isSaving ? "Saving..." : "Save Offline"}
                             </Button>
                           )}
                         </div>
                       </Card>
                     );
-                  })()}
+                  })() : (
+                    <Card className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-lavender-200/80 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-0.5 text-[11px] font-bold text-accent">
+                            <BookOpen className="h-3.5 w-3.5" />
+                            Clinical Articles
+                          </span>
+                          <span className="text-[11px] font-semibold text-muted">
+                            {LANGUAGE_NAMES[language] || language.toUpperCase()}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-black text-ink dark:text-white">
+                          Article in {LANGUAGE_NAMES[language] || language.toUpperCase()} Pending Translation
+                        </h4>
+                        <p className="text-xs leading-5 text-muted dark:text-white/60">
+                          Medically reviewed caregiver guides are currently published in English. You can browse the complete English catalogue in the Resource Library.
+                        </p>
+                      </div>
+                      <div className="mt-4 flex items-center gap-2 border-t border-lavender-100 pt-3 dark:border-white/10">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="w-full text-xs font-bold"
+                          onClick={() => navigate("/library")}
+                        >
+                          Browse English Guides in Library
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
                 </div>
               )}
             </div>
@@ -781,6 +1076,9 @@ export function CaregiverPage() {
                     <button
                       key={task.id}
                       type="button"
+                      role="checkbox"
+                      aria-checked={isChecked}
+                      aria-label={`${task.category}: ${task.label}`}
                       onClick={() => toggleTask(task.id)}
                       className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition ${
                         isChecked
@@ -1016,6 +1314,9 @@ export function CaregiverPage() {
 
           {/* TAB 5: HERREACH SIMPLE HEALTHCARE FACILITY SEARCH */}
           {activeTab === "herreach" && <CaregiverHerReachView />}
+
+          {/* TAB 6: CAREGIVER-ONLY RAG CHATBOT */}
+          {activeTab === "coach" && <CaregiverChat />}
         </>
       )}
       {/* VIDEO PLAYER MODAL */}
@@ -1170,6 +1471,7 @@ const CAREGIVER_FACILITY_CATEGORIES = [
 ];
 
 function CaregiverHerReachView() {
+  const areaInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("hospital");
   const [manualArea, setManualArea] = useState("");
@@ -1221,7 +1523,8 @@ function CaregiverHerReachView() {
   const handleGetLocation = () => {
     setLocationError("");
     if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by your browser. Please enter area manually.");
+      setLocationError("Geolocation is not supported by your browser. Please enter your locality or PIN code manually.");
+      areaInputRef.current?.focus();
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -1229,9 +1532,19 @@ function CaregiverHerReachView() {
         setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocationLabel(`Current Location (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`);
         setManualArea("");
+        setLocationError("");
       },
       (err) => {
-        setLocationError(err.code === err.PERMISSION_DENIED ? "Location access denied. Please enter an area or PIN code." : "Could not determine location.");
+        setUserCoords(null);
+        setLocationLabel("");
+        if (err.code === 1 || err.code === err.PERMISSION_DENIED) {
+          setLocationError("Location access denied. Please enter your area, city, or PIN code manually below.");
+        } else if (err.code === 3 || err.code === err.TIMEOUT) {
+          setLocationError("Location request timed out. Please enter your area or PIN code manually below.");
+        } else {
+          setLocationError("Could not determine location. Please enter your area or PIN code manually below.");
+        }
+        areaInputRef.current?.focus();
       },
       { timeout: 8000 }
     );
@@ -1265,6 +1578,7 @@ function CaregiverHerReachView() {
             <div className="relative">
               <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <Input
+                ref={areaInputRef}
                 id="caregiver-search-area-input"
                 type="text"
                 placeholder="Area, city, or PIN code (e.g. 560038)"
@@ -1273,6 +1587,7 @@ function CaregiverHerReachView() {
                   setManualArea(e.target.value);
                   setUserCoords(null);
                   setLocationLabel("");
+                  setLocationError("");
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void handleSearch();
@@ -1322,7 +1637,24 @@ function CaregiverHerReachView() {
             </div>
           )}
 
-          {locationError && <p className="text-xs text-rose-600">{locationError}</p>}
+          {locationError && (
+            <div
+              role="alert"
+              className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200"
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>{locationError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => areaInputRef.current?.focus()}
+                className="ml-2 font-bold text-primary underline hover:text-primary-dark"
+              >
+                Enter Manually
+              </button>
+            </div>
+          )}
 
           {/* Searchable categories */}
           <div className="flex flex-wrap gap-2 pt-1">
@@ -1383,7 +1715,34 @@ function CaregiverHerReachView() {
       {loading ? (
         <LoadingSkeleton />
       ) : errorMsg ? (
-        <ErrorState title="Healthcare search error" text={errorMsg} />
+        <Card className="border-rose-200 bg-rose-50/50 p-6 text-center dark:border-rose-900/30 dark:bg-rose-950/20">
+          <AlertTriangle className="mx-auto h-8 w-8 text-rose-600 dark:text-rose-400" />
+          <h3 className="mt-2 text-sm font-black text-ink dark:text-white">Healthcare Search Error</h3>
+          <p className="mt-1 text-xs text-muted dark:text-white/70 max-w-md mx-auto">{errorMsg}</p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <Button
+              variant="primary"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => void handleSearch()}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Try Search Again</span>
+            </Button>
+            {externalSearchUrl && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => window.open(externalSearchUrl, "_blank", "noopener,noreferrer")}
+              >
+                <Navigation className="h-3.5 w-3.5 text-primary" />
+                <span>Search on Google Maps</span>
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </Card>
       ) : facilities.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {facilities.map((facility) => (
@@ -1443,7 +1802,7 @@ function CaregiverHerReachView() {
       ) : isLiveProvider ? (
         <EmptyState
           title="No facilities found"
-          text="Try selecting a different healthcare category or entering a broader area."
+          text="No healthcare facilities matched this search. Try entering a nearby area or selecting a broader category."
         />
       ) : null}
 

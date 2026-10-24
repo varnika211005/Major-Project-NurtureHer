@@ -5,6 +5,7 @@ from app.api.routes import (
     auth,
     carecircle,
     caregiver,
+    caregiver_chat,
     chat,
     cycle,
     doctor,
@@ -25,6 +26,7 @@ api_router.include_router(pcos.router)
 api_router.include_router(ppd.router)
 api_router.include_router(chat.router)
 api_router.include_router(caregiver.router)
+api_router.include_router(caregiver_chat.router)
 api_router.include_router(carecircle.router)
 api_router.include_router(doctor.router)
 api_router.include_router(herreach.router)

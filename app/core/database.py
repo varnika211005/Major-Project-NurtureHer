@@ -94,5 +94,29 @@ def ensure_sqlite_schema(sync_conn) -> None:
                     "WHERE status = 'active' AND deleted_at IS NULL"
                 )
             )
+
+        if "caregiver_chat_messages" not in tables:
+            sync_conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS caregiver_chat_messages (
+                        id CHAR(36) PRIMARY KEY,
+                        caregiver_id CHAR(36) NOT NULL,
+                        mother_id CHAR(36) NULL,
+                        message TEXT NOT NULL,
+                        response TEXT NOT NULL,
+                        sources TEXT NULL,
+                        language VARCHAR(16) NOT NULL DEFAULT 'en',
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        deleted_at DATETIME NULL,
+                        FOREIGN KEY (caregiver_id) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY (mother_id) REFERENCES users(id) ON DELETE SET NULL
+                    )
+                    """
+                )
+            )
+            sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_caregiver_chat_caregiver_id ON caregiver_chat_messages (caregiver_id)"))
+            sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_caregiver_chat_mother_id ON caregiver_chat_messages (mother_id)"))
     except Exception:
         pass

@@ -109,7 +109,7 @@ export function getNavigationSections(t: TranslationSchema, role = "mother"): Na
           { key: "offline-library", label: "My Offline Library", path: "/offline-library?tab=offline", icon: Download },
           { key: "carecircle-connect", label: t.nav.connectToMother, path: "/caregiver?tab=connect", icon: QrCode },
           { key: "herreach", label: t.nav.facilityFinder, path: "/herreach", icon: Compass },
-          { key: "coach", label: t.nav.familyCoach, path: "/coach", icon: Bot },
+          { key: "coach", label: t.nav.familyCoach, path: "/caregiver?tab=coach", icon: Bot },
         ],
       },
       {
