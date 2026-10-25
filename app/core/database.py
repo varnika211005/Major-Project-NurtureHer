@@ -53,6 +53,9 @@ def ensure_sqlite_schema(sync_conn) -> None:
             if "share_nutrition" not in cols:
                 sync_conn.execute(text("ALTER TABLE carecircle_access ADD COLUMN share_nutrition BOOLEAN NOT NULL DEFAULT 0"))
                 sync_conn.execute(text("UPDATE carecircle_access SET share_nutrition = 0 WHERE share_nutrition IS NULL"))
+            if "share_chat_history" not in cols:
+                sync_conn.execute(text("ALTER TABLE carecircle_access ADD COLUMN share_chat_history BOOLEAN NOT NULL DEFAULT 0"))
+                sync_conn.execute(text("UPDATE carecircle_access SET share_chat_history = 0 WHERE share_chat_history IS NULL"))
 
         if "nutrition_care_plans" in tables:
             cols = [c[1] for c in sync_conn.execute(text("PRAGMA table_info(nutrition_care_plans)")).fetchall()]
@@ -85,6 +88,7 @@ def ensure_sqlite_schema(sync_conn) -> None:
                 sync_conn.execute(text("ALTER TABLE users ADD COLUMN relationship_label VARCHAR(80) NULL"))
             sync_conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_custom_id ON users (custom_id) WHERE custom_id IS NOT NULL"))
             sync_conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_medical_license ON users (medical_license) WHERE medical_license IS NOT NULL"))
+            sync_conn.execute(text("DELETE FROM users WHERE email LIKE '%.local' OR role = 'ASHA_WORKER'"))
 
         if "doctor_patients" in tables:
             sync_conn.execute(

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from app.core.database import AsyncSessionLocal
-from app.models.asha import Alert
+from app.models.alert import Alert
 from app.services.sms_provider import get_sms_provider
 from app.workers.celery_app import celery_app
 

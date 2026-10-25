@@ -68,7 +68,7 @@ export function ReportsZone() {
             { label: "Sentiment Lexicon", value: report.sentiment || "Neutral", note: "Journal text emotional indicator" },
           ],
       clinicalRecommendations: [
-        report.recommendations || "Discuss findings with your healthcare provider or ASHA worker.",
+        report.recommendations || "Discuss findings with your doctor or healthcare provider.",
         "Maintain routine hydration and follow-up clinical visits.",
         "This is an educational screening indication and not a confirmed medical diagnosis.",
       ],

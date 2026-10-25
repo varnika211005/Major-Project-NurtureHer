@@ -1,0 +1,185 @@
+{
+  "manifest_version": "medical-corpus-v1",
+  "created_utc": "2026-10-16T03:31:12.276009+00:00",
+  "embedding": {
+    "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+    "dimension": 384,
+    "backend": "minilm",
+    "threshold_default": 0.254,
+    "threshold_source": "app/rag_v2/thresholds.json (existing calibration)"
+  },
+  "chunking": {
+    "max_chars": 1200,
+    "overlap_chars": 180,
+    "strategy": "per-page sliding window",
+    "min_page_chars": 100,
+    "section_metadata": "nearest preceding document-structure heading per window (numbered sections, chapters, RECOMMENDATION lines, reference entries; carried across pages; empty before the first heading)"
+  },
+  "counts": {
+    "documents": 6,
+    "eligible": 5,
+    "quarantined": 1,
+    "chunks": 1167,
+    "bibliography_dropped": 98
+  },
+  "documents": [
+    {
+      "filename": "High-Risk-Conditions-in-preg-modified-Final.pdf",
+      "sha256": "7e1a86b02bdbf19015815cb603954a9983b254be9f5e88d834b4afccb79353b8",
+      "pages": 12,
+      "chars": 25817,
+      "weak_pages": [
+        9
+      ],
+      "license_note": "No reuse statement detected in extracted text. Local indexing only, no redistribution.",
+      "id": "mohfw-hrp",
+      "title": "High risk factors of pregnancy and their management at an ANC clinic (PMSMA)",
+      "publisher": "MoHFW, Government of India (PMSMA/NHM)",
+      "publication_date": "",
+      "review_status": "approved",
+      "topics": [
+        "preg-care",
+        "warning-signs",
+        "nutrition",
+        "sleep-wellbeing"
+      ],
+      "chunks": 30
+    },
+    {
+      "filename": "Maternal Health – Guidance Booklet for CHOs (English).pdf",
+      "sha256": "aa177468b7386eb1ddf3548863fd6ee121d0cb6b417d0d26606c06efccec4133",
+      "pages": 11,
+      "chars": 16113,
+      "weak_pages": [
+        1
+      ],
+      "license_note": "No reuse statement detected in extracted text. Local indexing only, no redistribution.",
+      "id": "mohfw-cho",
+      "title": "Maternal Health - Guidance Booklet for CHOs (English)",
+      "publisher": "MoHFW, Government of India",
+      "publication_date": "",
+      "review_status": "approved",
+      "topics": [
+        "preg-care",
+        "warning-signs",
+        "postnatal-recovery",
+        "breastfeeding",
+        "nutrition",
+        "ppd-support",
+        "ppd-urgent",
+        "sleep-wellbeing"
+      ],
+      "chunks": 16
+    },
+    {
+      "filename": "Standard Treatment Guidelines – Obstetrics and Gynaecology.pdf",
+      "sha256": "105ef97b460f3f1c8f1232884b65c33739322e753aaaf14422393df741542517",
+      "pages": 102,
+      "chars": 142849,
+      "weak_pages": [
+        54,
+        83
+      ],
+      "license_note": "No reuse statement detected in extracted text. Local indexing only, no redistribution.",
+      "id": "mohfw-stg-og",
+      "title": "Standard Treatment Guidelines - Obstetrics and Gynaecology",
+      "publisher": "MoHFW, Government of India",
+      "publication_date": "",
+      "review_status": "approved",
+      "topics": [
+        "diagnostics",
+        "treatment-clinician-directed",
+        "warning-signs",
+        "fertility",
+        "metabolic",
+        "preg-care",
+        "postnatal-recovery",
+        "nutrition",
+        "ppd-support"
+      ],
+      "chunks": 168
+    },
+    {
+      "filename": "who_perinatal_mental_health.pdf",
+      "sha256": "79d2c42e4ace43ee346a2bd9ffcdf2072a4c7391228c0f6d42cb247f885670ca",
+      "pages": 66,
+      "chars": 157700,
+      "weak_pages": [
+        1,
+        2,
+        3,
+        8,
+        9,
+        12,
+        13,
+        18,
+        19,
+        28,
+        29,
+        41,
+        51,
+        65
+      ],
+      "license_note": "No explicit reuse statement detected in extracted text; WHO publication. Local indexing only, no redistribution. Verify licence before any other use.",
+      "id": "who-pmh-2022",
+      "title": "Guide for integration of perinatal mental health in maternal and child health services",
+      "publisher": "World Health Organization",
+      "publication_date": "2022",
+      "review_status": "approved",
+      "topics": [
+        "ppd-symptoms",
+        "ppd-screening",
+        "ppd-support",
+        "ppd-treatment",
+        "ppd-urgent",
+        "breastfeeding",
+        "sleep-wellbeing",
+        "postnatal-recovery",
+        "nutrition"
+      ],
+      "chunks": 157
+    },
+    {
+      "filename": "who_postnatal_care.pdf",
+      "sha256": "f4cbef197fdf40d33e1c53987ba6f4e099265fe0d867724c8c2e4fb91051a071",
+      "pages": 242,
+      "chars": 801082,
+      "weak_pages": [
+        1,
+        2
+      ],
+      "license_note": "Statements found in document: © World Health Organization 2022 | Some rights reserved. This work is available under the Creative Commons Attribution-NonCommercial- | tables, figures or images, it is your responsibility to determine whether permission is needed for that reuse and",
+      "id": "who-pnc-2022",
+      "title": "WHO recommendations on maternal and newborn care for a positive postnatal experience",
+      "publisher": "World Health Organization",
+      "publication_date": "2022",
+      "review_status": "approved",
+      "topics": [
+        "postnatal-recovery",
+        "breastfeeding",
+        "nutrition",
+        "ppd-screening",
+        "ppd-support",
+        "warning-signs",
+        "sleep-wellbeing",
+        "preg-care"
+      ],
+      "chunks": 796
+    }
+  ],
+  "quarantined": [
+    {
+      "doc_id": "mohfw-pnc-note",
+      "reason": "review-pending"
+    }
+  ],
+  "corpus_manifest_text": "version=medical-corpus-v1\neligible=5\neligible-id=mohfw-cho\neligible-id=mohfw-hrp\neligible-id=mohfw-stg-og\neligible-id=who-pmh-2022\neligible-id=who-pnc-2022\nquarantined=mohfw-pnc-note:review-pending\n",
+  "notes": [
+    "review_status=approved means publisher-authoritative guideline approved for indexing.",
+    "It does NOT mean chatbot answers using the source are clinically validated.",
+    "Bibliography (reference-list) chunks are excluded from the index: they can score",
+    "highly on topical queries while offering no guidance.",
+    "PCOS-specific coverage is thin (see coverage matrix); STG + internal KB entry only.",
+    "Local indexing only; no document redistribution."
+  ]
+}

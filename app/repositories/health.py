@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy import desc, or_, select
 
-from app.models.asha import Alert, HighRiskCase
+from app.models.alert import Alert, HighRiskCase
 from app.models.caregiver import CaregiverContent
 from app.models.chat import ChatMessage
 from app.models.enums import CaseStatus, RiskLevel

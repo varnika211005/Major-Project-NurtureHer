@@ -1,5 +1,4 @@
 from collections.abc import AsyncIterator
-import uuid
 import pytest
 from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
@@ -13,12 +12,11 @@ from app.core.exceptions import AppError
 from app.core.security import UserRole, hash_password
 from app.main import app
 from app.models.carecircle import CareCircleAccess
-from app.models.doctor import DoctorNote, DoctorPatient
-from app.models.enums import MoodOption, RiskLevel
+from app.models.doctor import DoctorPatient
+from app.models.enums import RiskLevel
 from app.models.pcos import PCOSPrediction
 from app.models.ppd import PPDAssessment
 from app.models.user import MotherProfile, User
-from app.models.wellness import Mood, Symptom
 from app.schemas.auth import UserCreate
 from app.services.auth import AuthService
 
@@ -218,8 +216,8 @@ async def test_unverified_and_inactive_doctors_cannot_receive_assignments(doctor
     client, session_factory, current_user = doctor_test_client
     async with session_factory() as db:
         unverified_doc = await create_doctor(db, "Dr Unverified", "DOC-UNV", "MCI-UNV", is_verified=False)
-        inactive_doc = await create_doctor(db, "Dr Inactive", "DOC-INA", "MCI-INA", is_active=False)
-        verified_doc = await create_doctor(db, "Dr Verified", "DOC-VER", "MCI-VER", is_verified=True, is_active=True)
+        _ = await create_doctor(db, "Dr Inactive", "DOC-INA", "MCI-INA", is_active=False)
+        _ = await create_doctor(db, "Dr Verified", "DOC-VER", "MCI-VER", is_verified=True, is_active=True)
         patient = await create_mother(db, "Patient Test", "MTH-TST", "DOC-VER")
         await db.commit()
 

@@ -135,6 +135,7 @@ export type Profile = {
   experience_years?: number | null;
   hospital_clinic?: string | null;
   // Caregiver fields
+  caregiver_id?: string | null;
   assigned_mother_id?: string | null;
   linked_mother?: { id: string; name: string; custom_id: string | null } | null;
   caregiver_status?: string | null;

@@ -11,7 +11,7 @@ class PPDRecommendationEngine:
         if risk == RiskLevel.MODERATE:
             return (
                 f"EPDS score {epds_score} with {sentiment} sentiment indicates moderate risk. "
-                "Please arrange follow-up with a clinician or ASHA worker and ask a trusted caregiver for practical support."
+                "Please arrange follow-up with your doctor or healthcare professional and ask a trusted caregiver for practical support."
             )
         return (
             f"EPDS score {epds_score} with {sentiment} sentiment indicates low current risk. "

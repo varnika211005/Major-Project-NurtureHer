@@ -563,7 +563,7 @@ export function EmergencyPage() {
   const [dispatchStatus, setDispatchStatus] = useState<string | null>(null);
 
   const triggerDispatch = () => {
-    setDispatchStatus("SOS Alert dispatched to your emergency contact and nearest ASHA coordinator.");
+    setDispatchStatus("SOS Alert dispatched to your emergency contact and nearest healthcare center.");
   };
 
   return (
@@ -597,7 +597,7 @@ export function EmergencyPage() {
             className="bg-white/20 text-white hover:bg-white/30 font-bold border border-white/30 gap-2"
             onClick={triggerDispatch}
           >
-            <Sparkles className="h-4 w-4" /> Dispatch CareCircle & ASHA SOS
+            <Sparkles className="h-4 w-4" /> Dispatch CareCircle SOS
           </Button>
         </div>
 

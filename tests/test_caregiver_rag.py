@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from httpx import ASGITransport, AsyncClient
 
-from app.core.security import UserRole, create_access_token
+from app.core.security import UserRole
 from app.main import app
 from app.models.carecircle import CareCircleAccess
 from app.models.caregiver_chat import CaregiverChatMessage
@@ -43,7 +43,6 @@ async def test_caregiver_chat_endpoint_role_protection():
 
     # 2. Mother role user (unauthorized for caregiver chat -> 403)
     mother_user = User(id=uuid.uuid4(), email="mother@test.com", name="Priya", role=UserRole.MOTHER, is_active=True)
-    caregiver_user = User(id=uuid.uuid4(), email="caregiver@test.com", name="Rohan", role=UserRole.CAREGIVER, is_active=True)
 
     from app.core.dependencies import get_current_user
     app.dependency_overrides[get_current_user] = lambda: mother_user
@@ -184,7 +183,6 @@ async def test_caregiver_chat_history_isolation():
     """Verify conversation history is persisted and strictly isolated per caregiver."""
     mock_db = AsyncMock()
     caregiver1 = User(id=uuid.uuid4(), email="c1@test.com", name="Caregiver 1", role=UserRole.CAREGIVER)
-    caregiver2 = User(id=uuid.uuid4(), email="c2@test.com", name="Caregiver 2", role=UserRole.CAREGIVER)
 
     service = CaregiverRAGService(mock_db)
 

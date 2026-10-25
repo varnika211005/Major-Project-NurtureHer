@@ -31,3 +31,4 @@ langchain==0.2.11
 faiss-cpu==1.8.0.post1
 sentence-transformers==3.0.1
 pypdf==6.20.1
+aiosqlite==0.20.0

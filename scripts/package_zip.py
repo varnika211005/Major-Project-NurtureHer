@@ -1,5 +1,4 @@
 import os
-import sys
 import zipfile
 from pathlib import Path
 
@@ -42,7 +41,7 @@ def should_exclude(rel_path: Path) -> bool:
 
 
 def create_zip():
-    print(f"Packaging NurtureHer AI...")
+    print("Packaging NurtureHer AI...")
     print(f"Source: {SOURCE_DIR}")
     print(f"Destination: {DEST_ZIP}")
 
@@ -70,7 +69,7 @@ def create_zip():
                 total_uncompressed_bytes += file_path.stat().st_size
 
     zip_size = DEST_ZIP.stat().st_size
-    print(f"\nZIP Packaging Complete!")
+    print("\nZIP Packaging Complete!")
     print(f"Destination: {DEST_ZIP}")
     print(f"Total files packaged: {included_files}")
     print(f"Uncompressed size: {total_uncompressed_bytes / (1024 * 1024):.2f} MB")

@@ -88,6 +88,47 @@
         }
       }
     },
+    "/api/v1/auth/admin/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Admin Login",
+        "operationId": "admin_login_api_v1_auth_admin_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/refresh": {
       "post": {
         "tags": [
@@ -1232,31 +1273,6 @@
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/wellness/doctor-visit-summary": {
-      "post": {
-        "tags": [
-          "Mother Wellness"
-        ],
-        "summary": "Generate Doctor Visit Summary",
-        "description": "Generate an AI-powered doctor-visit summary combining symptoms, moods, and screenings.",
-        "operationId": "generate_doctor_visit_summary_api_v1_wellness_doctor_visit_summary_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
               }
             }
           }
@@ -2414,6 +2430,109 @@
         ]
       }
     },
+    "/api/v1/caregiver/chat/message": {
+      "post": {
+        "tags": [
+          "Caregiver AI Health Coach"
+        ],
+        "summary": "Send Caregiver Chat",
+        "description": "Caregiver-only RAG chatbot message endpoint.\nAnswers general maternal-health questions using retrieved medical evidence\nand answers questions about connected mother's dashboard data only with current CareCircle consent.\nNever calls the legacy chatbot endpoint or falls back to it.",
+        "operationId": "send_caregiver_chat_api_v1_caregiver_chat_message_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaregiverChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaregiverChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/caregiver/chat/history": {
+      "get": {
+        "tags": [
+          "Caregiver AI Health Coach"
+        ],
+        "summary": "Get Caregiver Chat History",
+        "description": "Get persistent conversation history strictly scoped to the authenticated caregiver.",
+        "operationId": "get_caregiver_chat_history_api_v1_caregiver_chat_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CaregiverChatResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Caregiver Chat History Api V1 Caregiver Chat History Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Caregiver AI Health Coach"
+        ],
+        "summary": "Clear Caregiver Chat History",
+        "description": "Clear conversation history strictly for the authenticated caregiver.",
+        "operationId": "clear_caregiver_chat_history_api_v1_caregiver_chat_history_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClearHistoryResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/carecircle/qr/generate": {
       "post": {
         "tags": [
@@ -2637,6 +2756,53 @@
         }
       }
     },
+    "/api/v1/carecircle/requests/{request_id}/status": {
+      "get": {
+        "tags": [
+          "CareCircle QR TrustVault"
+        ],
+        "summary": "Get Access Request Status",
+        "description": "Let a requester check only their own access request state.",
+        "operationId": "get_access_request_status_api_v1_carecircle_requests__request_id__status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/carecircle/connections": {
       "get": {
         "tags": [
@@ -2668,7 +2834,7 @@
           "CareCircle QR TrustVault"
         ],
         "summary": "Get Shared Summary",
-        "description": "Permitted caregiver or worker views the mother's consent-filtered summary.",
+        "description": "Permitted caregiver or doctor views the mother's consent-filtered summary.",
         "operationId": "get_shared_summary_api_v1_carecircle_shared_summary__access_id__get",
         "security": [
           {
@@ -2709,13 +2875,83 @@
         }
       }
     },
+    "/api/v1/carecircle/chat-history/{access_id}": {
+      "get": {
+        "tags": [
+          "CareCircle QR TrustVault"
+        ],
+        "summary": "Get Shared Chat History",
+        "description": "Approved caregiver views the mother's chat history only with chat consent.",
+        "operationId": "get_shared_chat_history_api_v1_carecircle_chat_history__access_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "access_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Access Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/doctor/patients": {
       "get": {
         "tags": [
           "Doctor Portal"
         ],
         "summary": "List Patients",
-        "description": "List all mothers / patients authorized for or assigned to this doctor.",
+        "description": "List mothers with an active doctor-patient assignment or approved CareCircle authorization for this doctor.",
         "operationId": "list_patients_api_v1_doctor_patients_get",
         "responses": {
           "200": {
@@ -2814,6 +3050,879 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/doctor/patients/{patient_id}/chat-history": {
+      "get": {
+        "tags": [
+          "Doctor Portal"
+        ],
+        "summary": "Get Patient Chat History",
+        "description": "Assigned doctor views a patient's AI chat history when the mother consented.",
+        "operationId": "get_patient_chat_history_api_v1_doctor_patients__patient_id__chat_history_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/doctor/escalations": {
+      "get": {
+        "tags": [
+          "Doctor Portal"
+        ],
+        "summary": "List Escalations",
+        "description": "Open chat-triage escalation cases for the doctor's authorized patients.",
+        "operationId": "list_escalations_api_v1_doctor_escalations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/doctor/patients/assign": {
+      "post": {
+        "tags": [
+          "Doctor Portal"
+        ],
+        "summary": "Assign Patient To Doctor",
+        "description": "Assign a patient to a doctor. Doctors can assign to themselves; Admins can assign to any verified doctor.",
+        "operationId": "assign_patient_to_doctor_api_v1_doctor_patients_assign_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientAssignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/doctor/patients/{patient_id}/end-care": {
+      "post": {
+        "tags": [
+          "Doctor Portal"
+        ],
+        "summary": "End Patient Care",
+        "description": "End care for an assigned patient.",
+        "operationId": "end_patient_care_api_v1_doctor_patients__patient_id__end_care_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/herreach/facilities": {
+      "get": {
+        "tags": [
+          "HerReach Healthcare Discovery"
+        ],
+        "summary": "Search Facilities",
+        "description": "Healthcare Facility Discovery for Mother, Caregiver, and Doctor portals.\nSupports real-time Google Places API if configured, or graceful Google Maps deep links.",
+        "operationId": "search_facilities_api_v1_herreach_facilities_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search facility name or keywords",
+              "title": "Query"
+            },
+            "description": "Search facility name or keywords"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Healthcare category key",
+              "title": "Category"
+            },
+            "description": "Healthcare category key"
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 90.0,
+                  "minimum": -90.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "User latitude",
+              "title": "Lat"
+            },
+            "description": "User latitude"
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 180.0,
+                  "minimum": -180.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "User longitude",
+              "title": "Lng"
+            },
+            "description": "User longitude"
+          },
+          {
+            "name": "area",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Manual locality, city or PIN code",
+              "title": "Area"
+            },
+            "description": "Manual locality, city or PIN code"
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50000,
+              "minimum": 500,
+              "description": "Search radius in meters",
+              "default": 10000,
+              "title": "Radius"
+            },
+            "description": "Search radius in meters"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacilitySearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/herreach/recommendations": {
+      "get": {
+        "tags": [
+          "HerReach Healthcare Discovery"
+        ],
+        "summary": "Get Recommendations",
+        "description": "Smart, concern-based healthcare facility recommendations for Mother Dashboard.\nUses existing PCOS and PPD assessment results without diagnostic claims.",
+        "operationId": "get_recommendations_api_v1_herreach_recommendations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HerReachRecommendationsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/herreach/helplines": {
+      "get": {
+        "tags": [
+          "HerReach Healthcare Discovery"
+        ],
+        "summary": "Get Official Helplines",
+        "description": "Return verified official public emergency and healthcare helpline numbers.",
+        "operationId": "get_official_helplines_api_v1_herreach_helplines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OfficialHelpline"
+                  },
+                  "type": "array",
+                  "title": "Response Get Official Helplines Api V1 Herreach Helplines Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nutrition/me": {
+      "get": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "Get My Nutrition",
+        "operationId": "get_my_nutrition_api_v1_nutrition_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nutrition/preferences": {
+      "put": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "Update Nutrition Preferences",
+        "operationId": "update_nutrition_preferences_api_v1_nutrition_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionPreferencesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nutrition/interactions/{recommendation_key}": {
+      "put": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "Update Nutrition Interaction",
+        "operationId": "update_nutrition_interaction_api_v1_nutrition_interactions__recommendation_key__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recommendation_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Recommendation Key"
+            }
+          },
+          {
+            "name": "completed",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "title": "Completed"
+            }
+          },
+          {
+            "name": "saved",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "title": "Saved"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nutrition/caregiver/connections/{access_id}": {
+      "get": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "Get Caregiver Nutrition",
+        "operationId": "get_caregiver_nutrition_api_v1_nutrition_caregiver_connections__access_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "access_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Access Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nutrition/doctor/patients": {
+      "get": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "List Doctor Nutrition Patients",
+        "operationId": "list_doctor_nutrition_patients_api_v1_nutrition_doctor_patients_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/nutrition/doctor/patients/{patient_id}": {
+      "get": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "Get Doctor Patient Nutrition",
+        "operationId": "get_doctor_patient_nutrition_api_v1_nutrition_doctor_patients__patient_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nutrition/doctor/patients/{patient_id}/plans": {
+      "post": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "Create Doctor Nutrition Draft",
+        "operationId": "create_doctor_nutrition_draft_api_v1_nutrition_doctor_patients__patient_id__plans_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionPlanDraftInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nutrition/doctor/patients/{patient_id}/plans/{plan_id}": {
+      "put": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "Update Doctor Nutrition Draft",
+        "operationId": "update_doctor_nutrition_draft_api_v1_nutrition_doctor_patients__patient_id__plans__plan_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionPlanDraftInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nutrition/doctor/patients/{patient_id}/plans/{plan_id}/publish": {
+      "post": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "Publish Doctor Nutrition Plan",
+        "operationId": "publish_doctor_nutrition_plan_api_v1_nutrition_doctor_patients__patient_id__plans__plan_id__publish_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/nutrition/doctor/patients/{patient_id}/plans/{plan_id}/discontinue": {
+      "post": {
+        "tags": [
+          "Nutrition & Wellness Guide"
+        ],
+        "summary": "Discontinue Doctor Nutrition Plan",
+        "operationId": "discontinue_doctor_nutrition_plan_api_v1_nutrition_doctor_patients__patient_id__plans__plan_id__discontinue_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3339,6 +4448,564 @@
         }
       }
     },
+    "/api/v1/education/categories": {
+      "get": {
+        "tags": [
+          "Educational Library"
+        ],
+        "summary": "Get Categories",
+        "operationId": "get_categories_api_v1_education_categories_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EducationCategoriesRead"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/education/resources": {
+      "get": {
+        "tags": [
+          "Educational Library"
+        ],
+        "summary": "List Resources",
+        "operationId": "list_resources_api_v1_education_resources_get",
+        "parameters": [
+          {
+            "name": "content_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "'video' or 'article'",
+              "title": "Content Type"
+            },
+            "description": "'video' or 'article'"
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Language code e.g. 'en', 'hi', 'kn', 'ta', 'te', 'ml', or 'all'",
+              "title": "Language"
+            },
+            "description": "Language code e.g. 'en', 'hi', 'kn', 'ta', 'te', 'ml', or 'all'"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EducationalResourceRead"
+                  },
+                  "title": "Response List Resources Api V1 Education Resources Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Educational Library"
+        ],
+        "summary": "Create Resource",
+        "operationId": "create_resource_api_v1_education_resources_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EducationalResourceCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EducationalResourceRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/education/videos": {
+      "get": {
+        "tags": [
+          "Educational Library"
+        ],
+        "summary": "List Videos",
+        "operationId": "list_videos_api_v1_education_videos_get",
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Language code e.g. 'en', 'hi', 'kn', 'ta', 'te', 'ml', or 'all'",
+              "title": "Language"
+            },
+            "description": "Language code e.g. 'en', 'hi', 'kn', 'ta', 'te', 'ml', or 'all'"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EducationalResourceRead"
+                  },
+                  "title": "Response List Videos Api V1 Education Videos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/education/articles": {
+      "get": {
+        "tags": [
+          "Educational Library"
+        ],
+        "summary": "List Articles",
+        "operationId": "list_articles_api_v1_education_articles_get",
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Language code e.g. 'en', 'hi', 'kn', 'ta', 'te', 'ml', or 'all'",
+              "title": "Language"
+            },
+            "description": "Language code e.g. 'en', 'hi', 'kn', 'ta', 'te', 'ml', or 'all'"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EducationalResourceRead"
+                  },
+                  "title": "Response List Articles Api V1 Education Articles Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/education/resources/{resource_id}": {
+      "get": {
+        "tags": [
+          "Educational Library"
+        ],
+        "summary": "Get Resource",
+        "operationId": "get_resource_api_v1_education_resources__resource_id__get",
+        "parameters": [
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resource Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EducationalResourceRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Educational Library"
+        ],
+        "summary": "Update Resource",
+        "operationId": "update_resource_api_v1_education_resources__resource_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resource Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EducationalResourceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EducationalResourceRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Educational Library"
+        ],
+        "summary": "Delete Resource",
+        "operationId": "delete_resource_api_v1_education_resources__resource_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Resource Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -3422,6 +5089,16 @@
           "share_doctor_notes": {
             "type": "boolean",
             "title": "Share Doctor Notes",
+            "default": false
+          },
+          "share_nutrition": {
+            "type": "boolean",
+            "title": "Share Nutrition",
+            "default": false
+          },
+          "share_chat_history": {
+            "type": "boolean",
+            "title": "Share Chat History",
             "default": false
           }
         },
@@ -3643,6 +5320,90 @@
         ],
         "title": "Body_voice_api_v1_chat_voice_post"
       },
+      "CaregiverChatRequest": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 2,
+            "title": "Language",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "CaregiverChatRequest"
+      },
+      "CaregiverChatResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "response": {
+            "type": "string",
+            "title": "Response"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/CitationSource"
+            },
+            "type": "array",
+            "title": "Sources",
+            "default": []
+          },
+          "clinical_disclaimer": {
+            "type": "string",
+            "title": "Clinical Disclaimer"
+          },
+          "has_maternal_data": {
+            "type": "boolean",
+            "title": "Has Maternal Data",
+            "default": false
+          },
+          "maternal_consent_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maternal Consent Status"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "message",
+          "response",
+          "language",
+          "clinical_disclaimer",
+          "created_at"
+        ],
+        "title": "CaregiverChatResponse"
+      },
       "CaregiverContentCreate": {
         "properties": {
           "title": {
@@ -3829,6 +5590,13 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ChatSourceRead"
+            },
+            "type": "array",
+            "title": "Sources"
           }
         },
         "type": "object",
@@ -3862,6 +5630,186 @@
           "message"
         ],
         "title": "ChatRequest"
+      },
+      "ChatSourceRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "medical_corpus",
+              "internal_knowledge"
+            ],
+            "title": "Kind"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "publication_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publication Date"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "kind"
+        ],
+        "title": "ChatSourceRead"
+      },
+      "CitationSource": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "publisher": {
+            "type": "string",
+            "title": "Publisher"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "excerpt": {
+            "type": "string",
+            "title": "Excerpt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "publisher",
+          "page",
+          "excerpt"
+        ],
+        "title": "CitationSource"
+      },
+      "ClearHistoryResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "deleted_count": {
+            "type": "integer",
+            "title": "Deleted Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "deleted_count"
+        ],
+        "title": "ClearHistoryResponse"
+      },
+      "ConcernRecommendation": {
+        "properties": {
+          "concern_key": {
+            "type": "string",
+            "title": "Concern Key"
+          },
+          "concern_title": {
+            "type": "string",
+            "title": "Concern Title"
+          },
+          "detected_assessment_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected Assessment Basis"
+          },
+          "suggested_facility_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Suggested Facility Types"
+          },
+          "recommended_category": {
+            "type": "string",
+            "title": "Recommended Category"
+          },
+          "clinical_safety_notice": {
+            "type": "string",
+            "title": "Clinical Safety Notice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "concern_key",
+          "concern_title",
+          "suggested_facility_types",
+          "recommended_category",
+          "clinical_safety_notice"
+        ],
+        "title": "ConcernRecommendation"
       },
       "CycleCreate": {
         "properties": {
@@ -4097,6 +6045,760 @@
         ],
         "title": "DoctorNoteCreate"
       },
+      "EducationCategoriesRead": {
+        "properties": {
+          "video_categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Video Categories"
+          },
+          "article_categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Article Categories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "video_categories",
+          "article_categories"
+        ],
+        "title": "EducationCategoriesRead"
+      },
+      "EducationalResourceCreate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Description"
+          },
+          "content_type": {
+            "type": "string",
+            "enum": [
+              "video",
+              "article"
+            ],
+            "title": "Content Type"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 2,
+            "title": "Language",
+            "default": "en"
+          },
+          "series_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Name"
+          },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified",
+            "default": false
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Category"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes"
+          },
+          "article_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Content"
+          },
+          "author_publisher": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Publisher"
+          },
+          "review_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Date"
+          },
+          "sources_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sources Json"
+          },
+          "is_downloadable": {
+            "type": "boolean",
+            "title": "Is Downloadable",
+            "default": true
+          },
+          "is_published": {
+            "type": "boolean",
+            "title": "Is Published",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "description",
+          "content_type",
+          "category"
+        ],
+        "title": "EducationalResourceCreate"
+      },
+      "EducationalResourceRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": "en"
+          },
+          "series_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Name"
+          },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified",
+            "default": false
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes"
+          },
+          "article_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Content"
+          },
+          "author_publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Publisher"
+          },
+          "review_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Date"
+          },
+          "sources_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sources Json"
+          },
+          "is_downloadable": {
+            "type": "boolean",
+            "title": "Is Downloadable",
+            "default": true
+          },
+          "is_published": {
+            "type": "boolean",
+            "title": "Is Published",
+            "default": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "content_type",
+          "category",
+          "created_at"
+        ],
+        "title": "EducationalResourceRead"
+      },
+      "EducationalResourceUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "video",
+                  "article"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Type"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "series_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Name"
+          },
+          "is_verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Verified"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Url"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes"
+          },
+          "article_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Content"
+          },
+          "author_publisher": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Publisher"
+          },
+          "review_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Date"
+          },
+          "sources_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sources Json"
+          },
+          "is_downloadable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Downloadable"
+          },
+          "is_published": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Published"
+          }
+        },
+        "type": "object",
+        "title": "EducationalResourceUpdate"
+      },
+      "FacilityItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "facility_type": {
+            "type": "string",
+            "title": "Facility Type"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lng": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lng"
+          },
+          "distance_km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Km"
+          },
+          "contact_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Number"
+          },
+          "opening_hours": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Hours"
+          },
+          "directions_url": {
+            "type": "string",
+            "title": "Directions Url"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "user_ratings_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Ratings Total"
+          },
+          "is_emergency": {
+            "type": "boolean",
+            "title": "Is Emergency",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "facility_type",
+          "address",
+          "directions_url"
+        ],
+        "title": "FacilityItem"
+      },
+      "FacilitySearchResponse": {
+        "properties": {
+          "is_live_provider": {
+            "type": "boolean",
+            "title": "Is Live Provider"
+          },
+          "provider_status": {
+            "type": "string",
+            "title": "Provider Status"
+          },
+          "provider_name": {
+            "type": "string",
+            "title": "Provider Name",
+            "default": "Google Maps Places API"
+          },
+          "total_found": {
+            "type": "integer",
+            "title": "Total Found"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "location_searched": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Searched"
+          },
+          "external_search_url": {
+            "type": "string",
+            "title": "External Search Url"
+          },
+          "facilities": {
+            "items": {
+              "$ref": "#/components/schemas/FacilityItem"
+            },
+            "type": "array",
+            "title": "Facilities"
+          },
+          "official_helplines": {
+            "items": {
+              "$ref": "#/components/schemas/OfficialHelpline"
+            },
+            "type": "array",
+            "title": "Official Helplines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_live_provider",
+          "provider_status",
+          "total_found",
+          "external_search_url"
+        ],
+        "title": "FacilitySearchResponse"
+      },
       "ForgotPasswordRequest": {
         "properties": {
           "email": {
@@ -4124,14 +6826,67 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HerReachRecommendationsResponse": {
+        "properties": {
+          "user_role": {
+            "type": "string",
+            "title": "User Role"
+          },
+          "has_pcos_data": {
+            "type": "boolean",
+            "title": "Has Pcos Data"
+          },
+          "has_ppd_data": {
+            "type": "boolean",
+            "title": "Has Ppd Data"
+          },
+          "has_pregnancy_data": {
+            "type": "boolean",
+            "title": "Has Pregnancy Data"
+          },
+          "clinical_disclaimer": {
+            "type": "string",
+            "title": "Clinical Disclaimer"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/ConcernRecommendation"
+            },
+            "type": "array",
+            "title": "Recommendations"
+          },
+          "available_categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Available Categories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_role",
+          "has_pcos_data",
+          "has_ppd_data",
+          "has_pregnancy_data",
+          "clinical_disclaimer",
+          "recommendations",
+          "available_categories"
+        ],
+        "title": "HerReachRecommendationsResponse"
+      },
       "HydrationUpdate": {
         "properties": {
           "cups": {
             "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Cups"
           },
           "target_cups": {
             "type": "integer",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
             "title": "Target Cups",
             "default": 8
           }
@@ -4234,6 +6989,49 @@
           "password": {
             "type": "string",
             "title": "Password"
+          },
+          "portal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "doctor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctor Id"
+          },
+          "medical_license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medical License"
+          },
+          "mother_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mother Id"
           }
         },
         "type": "object",
@@ -4370,11 +7168,49 @@
       },
       "MotherProfileUpdate": {
         "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "preferred_language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Language"
+          },
           "age": {
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 70.0,
+                "maximum": 120.0,
                 "minimum": 10.0
               },
               {
@@ -4480,10 +7316,288 @@
               }
             ],
             "title": "Village"
+          },
+          "specialization": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialization"
+          },
+          "qualifications": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualifications"
+          },
+          "experience_years": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 80.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experience Years"
+          },
+          "hospital_clinic": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hospital Clinic"
+          },
+          "relationship_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Label"
           }
         },
         "type": "object",
         "title": "MotherProfileUpdate"
+      },
+      "NutritionMealInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "meal_type": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Meal Type"
+          },
+          "ingredients": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Ingredients"
+          },
+          "serving_size": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Size"
+          },
+          "preparation_instructions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Preparation Instructions"
+          },
+          "preparation_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1440.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preparation Minutes"
+          },
+          "substitutions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Substitutions"
+          },
+          "nutrition_facts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Nutrition Facts"
+          },
+          "nutrition_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nutrition Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "meal_type"
+        ],
+        "title": "NutritionMealInput"
+      },
+      "NutritionPlanDraftInput": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "applicable_context": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Applicable Context"
+          },
+          "meals": {
+            "items": {
+              "$ref": "#/components/schemas/NutritionMealInput"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Meals"
+          },
+          "preparation_guidance": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preparation Guidance"
+          },
+          "clinician_note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clinician Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "meals"
+        ],
+        "title": "NutritionPlanDraftInput"
+      },
+      "NutritionPreferencesUpdate": {
+        "properties": {
+          "dietary_preferences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Dietary Preferences"
+          },
+          "dietary_restrictions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Dietary Restrictions"
+          },
+          "allergies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Allergies"
+          },
+          "breastfeeding": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breastfeeding"
+          }
+        },
+        "type": "object",
+        "title": "NutritionPreferencesUpdate"
+      },
+      "OfficialHelpline": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "number",
+          "description",
+          "category"
+        ],
+        "title": "OfficialHelpline"
       },
       "PCOSPredictRequest": {
         "properties": {
@@ -4646,6 +7760,47 @@
           "answers"
         ],
         "title": "PPDAssessmentRequest"
+      },
+      "PatientAssignRequest": {
+        "properties": {
+          "patient_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Id"
+          },
+          "mother_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mother Id"
+          },
+          "doctor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctor Id"
+          }
+        },
+        "type": "object",
+        "title": "PatientAssignRequest"
       },
       "RefreshRequest": {
         "properties": {
@@ -4913,6 +8068,19 @@
             "minLength": 8,
             "title": "Password"
           },
+          "confirm_password": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Password"
+          },
           "phone": {
             "anyOf": [
               {
@@ -4939,6 +8107,55 @@
             "minLength": 2,
             "title": "Preferred Language",
             "default": "en"
+          },
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 130.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "doctor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctor Id"
+          },
+          "medical_license": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medical License"
+          },
+          "mother_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mother Id"
           }
         },
         "type": "object",
@@ -4958,7 +8175,6 @@
           },
           "email": {
             "type": "string",
-            "format": "email",
             "title": "Email"
           },
           "name": {
@@ -4990,6 +8206,116 @@
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
+          },
+          "custom_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Id"
+          },
+          "medical_license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medical License"
+          },
+          "assigned_doctor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Doctor Id"
+          },
+          "assigned_mother_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Mother Id"
+          },
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "specialization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialization"
+          },
+          "qualifications": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualifications"
+          },
+          "experience_years": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experience Years"
+          },
+          "hospital_clinic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hospital Clinic"
+          },
+          "relationship_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Label"
           }
         },
         "type": "object",

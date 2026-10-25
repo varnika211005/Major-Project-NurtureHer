@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.asha import Alert
+from app.models.alert import Alert
 from app.models.user import User
 from app.repositories.alerts import AlertRepository
 

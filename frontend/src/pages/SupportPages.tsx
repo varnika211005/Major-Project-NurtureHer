@@ -26,7 +26,10 @@ import { LanguageSelector } from "@/components/common/LanguageSelector";
 import { useAuth } from "@/context/useAuth";
 import { useLanguage } from "@/context/useLanguage";
 
+import { CaregiverProfile } from "@/components/caregiver/CaregiverProfile";
+
 export { HealthInsightsPage as InsightsPage } from "./HealthInsights";
+export { CaregiverProfile };
 
 export function JournalPage() {
   const { t } = useLanguage();
@@ -219,6 +222,9 @@ export function ReportsPage() {
 
 export function ProfilePage() {
   const { user } = useAuth();
+  if (user?.role?.toLowerCase() === "caregiver") {
+    return <CaregiverProfile />;
+  }
   const { t, currentLanguage } = useLanguage();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -315,8 +321,6 @@ export function ProfilePage() {
         payload.qualifications = qualifications.trim() || null;
         payload.experience_years = experienceYears === "" ? null : Number(experienceYears);
         payload.hospital_clinic = hospitalClinic.trim() || null;
-      } else if (user?.role === "caregiver") {
-        payload.relationship_label = relationshipLabel.trim() || null;
       }
 
       const updated = await api.updateProfile(payload);
@@ -342,8 +346,6 @@ export function ProfilePage() {
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-primary to-accent text-white shadow-glow">
             {user?.role === "doctor" ? (
               <Stethoscope className="h-10 w-10" />
-            ) : user?.role === "caregiver" ? (
-              <HeartHandshake className="h-10 w-10" />
             ) : (
               <UserRound className="h-10 w-10" />
             )}
@@ -424,31 +426,6 @@ export function ProfilePage() {
                 </div>
               </>
             )}
-
-            {user?.role === "caregiver" && (
-              <>
-                <div>
-                  <span className="text-muted">Caregiver ID:</span>
-                  <p className="font-mono font-bold text-primary dark:text-lavender-200">
-                    {profile?.custom_id || user?.custom_id || "CRG-Pending"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-muted">Linked Patient:</span>
-                  <p className="font-bold text-ink dark:text-white">
-                    {profile?.linked_mother
-                      ? `${profile.linked_mother.name} (${profile.linked_mother.custom_id})`
-                      : profile?.assigned_mother_id || user?.assigned_mother_id || "None Assigned"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-muted">CareCircle Consent:</span>
-                  <p className="font-bold text-ink dark:text-white capitalize">
-                    {profile?.caregiver_status === "approved" ? "Approved by Patient" : "Pending Consent"}
-                  </p>
-                </div>
-              </>
-            )}
           </div>
         </Card>
 
@@ -468,14 +445,7 @@ export function ProfilePage() {
             />
           )}
 
-          {user?.role === "caregiver" && (
-            <SectionHeader
-              title="Caregiver Companion Profile"
-              subtitle="Caregiver details, relationship to patient, and CareCircle consent status."
-            />
-          )}
-
-          {user?.role !== "doctor" && user?.role !== "mother" && user?.role !== "caregiver" && (
+          {user?.role !== "doctor" && user?.role !== "mother" && (
             <SectionHeader
               title="Account Profile"
               subtitle="Manage your system account details."
@@ -747,71 +717,6 @@ export function ProfilePage() {
                         placeholder="e.g. Yelahanka"
                         className="mt-1 w-full rounded-xl border border-lavender-200 bg-white p-2.5 text-xs outline-none focus:border-primary dark:border-white/10 dark:bg-white/10 dark:text-white"
                       />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* CAREGIVER SPECIFIC FIELDS */}
-              {user?.role === "caregiver" && (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <div>
-                      <label className="block text-xs font-bold text-ink dark:text-white">Caregiver ID</label>
-                      <input
-                        type="text"
-                        disabled
-                        value={profile?.custom_id || user?.custom_id || "CRG-Pending"}
-                        className="mt-1 w-full rounded-xl border border-lavender-200 bg-lavender-50 p-2.5 font-mono text-xs text-muted dark:border-white/10 dark:bg-white/5 dark:text-white/60"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-ink dark:text-white">Linked Patient</label>
-                      <input
-                        type="text"
-                        disabled
-                        value={
-                          profile?.linked_mother
-                            ? `${profile.linked_mother.name} (${profile.linked_mother.custom_id})`
-                            : profile?.assigned_mother_id || user?.assigned_mother_id || "None Assigned"
-                        }
-                        className="mt-1 w-full rounded-xl border border-lavender-200 bg-lavender-50 p-2.5 text-xs text-muted dark:border-white/10 dark:bg-white/5 dark:text-white/60"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-ink dark:text-white">CareCircle Consent Status</label>
-                      <div className="mt-1">
-                        <Badge
-                          className={
-                            profile?.caregiver_status === "approved"
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                              : "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                          }
-                        >
-                          {profile?.caregiver_status === "approved" ? "Approved by Patient" : "Pending Patient Consent"}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-bold text-ink dark:text-white">Relationship to Patient</label>
-                      <select
-                        value={relationshipLabel}
-                        onChange={(e) => setRelationshipLabel(e.target.value)}
-                        className="mt-1 w-full rounded-xl border border-lavender-200 bg-white p-2.5 text-xs outline-none focus:border-primary dark:border-white/10 dark:bg-white/10 dark:text-white"
-                      >
-                        <option value="Caregiver">Caregiver</option>
-                        <option value="Spouse / Partner">Spouse / Partner</option>
-                        <option value="Parent">Parent</option>
-                        <option value="Sibling">Sibling</option>
-                        <option value="Family Member">Family Member</option>
-                        <option value="Professional Caregiver">Professional Caregiver</option>
-                        <option value="Other">Other</option>
-                      </select>
                     </div>
                   </div>
                 </>

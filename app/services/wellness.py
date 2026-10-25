@@ -179,7 +179,7 @@ class WellnessService:
                 WellnessInsight(
                     category="ppd",
                     severity=dashboard.ppd_status,
-                    message="Latest postpartum mental health screening needs follow-up. Please connect with a clinician or ASHA worker.",
+                    message="Latest postpartum mental health screening needs follow-up. Please connect with your doctor or healthcare professional.",
                 )
             )
         if not insights:

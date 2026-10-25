@@ -1,5 +1,5 @@
 from app.models.audit import AuditLog, RefreshToken
-from app.models.asha import Alert, HighRiskCase
+from app.models.alert import Alert, HighRiskCase
 from app.models.caregiver import CaregiverContent
 from app.models.caregiver_chat import CaregiverChatMessage
 from app.models.carecircle import CareCircleAccess, CareCircleQR

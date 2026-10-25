@@ -3,7 +3,6 @@ from collections.abc import AsyncIterator
 import uuid
 from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.models  # noqa: F401
@@ -14,8 +13,6 @@ from app.main import app
 from app.models.carecircle import CareCircleAccess
 from app.models.doctor import DoctorPatient
 from app.models.user import MotherProfile, User
-from app.schemas.auth import UserCreate
-from app.services.auth import AuthService
 
 
 PASSWORD = "Password123!"

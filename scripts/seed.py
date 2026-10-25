@@ -1,12 +1,10 @@
 import asyncio
 import os
-from datetime import date, datetime, timedelta
-import uuid
+from datetime import date, timedelta
 
 from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal, Base, engine, ensure_sqlite_schema
-import app.models  # ensure all models registered
 from app.core.security import UserRole, hash_password
 from app.models.carecircle import CareCircleQR
 from app.models.caregiver import CaregiverContent
@@ -87,7 +85,7 @@ async def main() -> None:
         caregiver.assigned_mother_id = "MTH-100001"
         caregiver.is_verified = True
 
-        admin = await ensure_user(db, "admin@nurtureher.com", "NurtureHer Administrator", demo_pwd, UserRole.ADMIN)
+        await ensure_user(db, "admin@nurtureher.com", "NurtureHer Administrator", demo_pwd, UserRole.ADMIN)
 
         from app.models.doctor import DoctorPatient
         from app.models.carecircle import CareCircleAccess

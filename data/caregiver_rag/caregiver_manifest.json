@@ -1,0 +1,43 @@
+{
+  "version": "caregiver-rag-v1",
+  "description": "Isolated Caregiver Health & Postpartum RAG Knowledge Index",
+  "total_documents": 5,
+  "total_chunks": 1851,
+  "documents": [
+    {
+      "doc_id": "who-pnc-2022",
+      "title": "WHO Recommendations on Maternal and Newborn Care for a Positive Postnatal Experience",
+      "publisher": "World Health Organization (WHO)",
+      "filename": "who_postnatal_care.pdf",
+      "chunks_count": 1485
+    },
+    {
+      "doc_id": "who-pmh-2022",
+      "title": "Guide for Integration of Perinatal Mental Health in Maternal and Child Health Services",
+      "publisher": "World Health Organization (WHO)",
+      "filename": "who_perinatal_mental_health.pdf",
+      "chunks_count": 280
+    },
+    {
+      "doc_id": "mohfw-pnc-guidance",
+      "title": "Guidance Note on Optimizing Post-Natal Care",
+      "publisher": "Ministry of Health and Family Welfare (MoHFW), Government of India",
+      "filename": "Guidance Note on Optimizing Postnatal Care.pdf",
+      "chunks_count": 11
+    },
+    {
+      "doc_id": "mohfw-high-risk",
+      "title": "High Risk Factors of Pregnancy and Management at ANC Clinic (PMSMA)",
+      "publisher": "MoHFW, Government of India",
+      "filename": "High-Risk-Conditions-in-preg-modified-Final.pdf",
+      "chunks_count": 45
+    },
+    {
+      "doc_id": "mohfw-cho-handbook",
+      "title": "Maternal Health Guidance Booklet for Community Health Officers",
+      "publisher": "MoHFW, Government of India",
+      "filename": "Maternal Health – Guidance Booklet for CHOs (English).pdf",
+      "chunks_count": 30
+    }
+  ]
+}

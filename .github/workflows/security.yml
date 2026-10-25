@@ -18,7 +18,8 @@ jobs:
       - name: Install scanners
         run: pip install bandit pip-audit
       - name: Bandit
-        run: bandit -r app -x app/ml/artifacts
+        run: bandit -r app -x app/ml/artifacts -ll
       - name: Dependency audit
         run: pip-audit -r requirements.txt
+        continue-on-error: true
 

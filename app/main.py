@@ -19,15 +19,13 @@ from app.middleware.request_tracking import RequestTrackingMiddleware
 from app.middleware.sanitization import InputSanitizationMiddleware
 from app.monitoring.metrics import PrometheusMetricsMiddleware, metrics_response
 from app.utils.logging import configure_logging
+from app.core.database import Base, engine, ensure_sqlite_schema
+import app.models  # noqa: F401
 
 configure_logging(settings.log_level)
 if settings.sentry_dsn:
     sentry_sdk.init(dsn=settings.sentry_dsn, traces_sample_rate=settings.sentry_traces_sample_rate, environment=settings.environment)
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
-
-
-from app.core.database import Base, engine, ensure_sqlite_schema
-import app.models  # noqa: F401
 
 
 @asynccontextmanager

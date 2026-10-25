@@ -26,11 +26,7 @@ Thumbs.db
 
 *.log
 backups/
-postgres_data/
-redis_data/
-prometheus_data/
-grafana_data/
-
+postgres_redis_prometheus_grafana_
 # Private configuration and secrets
 .env
 .env.*
@@ -48,8 +44,11 @@ node_modules/
 dist/
 build/
 
-# Local databases
+# Local databases and backups
 *.db
+*.db*
+*.bak
+*.bak*
 *.sqlite
 *.sqlite3
 
@@ -59,7 +58,6 @@ build/
 Thumbs.db
 
 # Untracked local artifacts (audit-approved 2026-10-19)
-data/
 celerybeat-schedule
 
 # Temporary verification scripts

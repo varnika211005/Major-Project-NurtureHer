@@ -11,7 +11,7 @@ from app.core.security import UserRole
 
 if TYPE_CHECKING:
     from app.models.audit import RefreshToken
-    from app.models.asha import Alert, HighRiskCase
+    from app.models.alert import Alert, HighRiskCase
     from app.models.chat import ChatMessage
     from app.models.pcos import PCOSPrediction
     from app.models.ppd import PPDAssessment

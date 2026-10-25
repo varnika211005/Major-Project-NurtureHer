@@ -26,7 +26,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.asha import HighRiskCase
+from app.models.alert import HighRiskCase
 from app.models.carecircle import CareCircleAccess
 from app.models.doctor import DoctorPatient
 from app.models.enums import CaseStatus, RiskLevel

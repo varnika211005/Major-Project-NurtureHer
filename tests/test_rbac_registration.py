@@ -2,7 +2,7 @@ import json
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 import app.models  # noqa: F401 - register all models
 from app.api.deps import get_current_user

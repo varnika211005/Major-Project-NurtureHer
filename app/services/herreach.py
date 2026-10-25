@@ -288,6 +288,10 @@ class HerReachService:
         when unconfigured, with zero fabricated places.
         """
         api_key = settings.google_maps_api_key
+        if not api_key:
+            import dotenv
+            env_vals = dotenv.dotenv_values(".env")
+            api_key = env_vals.get("GOOGLE_MAPS_API_KEY")
 
         # Build clean search terms
         search_category = category.lower().strip() if category else "hospital"
@@ -420,7 +424,7 @@ class HerReachService:
                     "X-Goog-FieldMask": (
                         "places.id,places.displayName,places.formattedAddress,"
                         "places.location,places.rating,places.userRatingCount,"
-                        "places.currentOpeningHours.openNow"
+                        "places.currentOpeningHours.openNow,places.nationalPhoneNumber"
                     ),
                 },
                 json=request_body,
@@ -503,7 +507,7 @@ class HerReachService:
                         lat=p_lat,
                         lng=p_lng,
                         distance_km=dist,
-                        contact_number=None,  # Detailed Place Details required for phone
+                        contact_number=item.get("nationalPhoneNumber"),
                         opening_hours=opening_str,
                         directions_url=dir_url,
                         rating=item.get("rating"),
@@ -691,7 +695,7 @@ class HerReachService:
             )
 
             return FacilitySearchResponse(
-                is_live_provider=True,
+                is_live_provider=bool(facilities),
                 provider_status=provider_status,
                 provider_name="OpenStreetMap (Nominatim)",
                 total_found=len(facilities),

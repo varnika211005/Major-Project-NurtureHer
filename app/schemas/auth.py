@@ -34,7 +34,7 @@ class AdminUserUpdate(UserUpdate):
 
 class UserRead(ORMModel):
     id: UUID
-    email: EmailStr
+    email: str
     name: str
     phone: str | None
     role: UserRole

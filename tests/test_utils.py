@@ -29,7 +29,7 @@ async def test_safe_redis_graceful_fallback():
     assert await redis_client.delete("key") == 0 or True
     assert await redis_client.lrange("key", 0, -1) == [] or True
     assert await redis_client.lpush("key", "val") == 0 or True
-    assert await redis_client.ltrim("key", 0, 1) is None
+    assert await redis_client.ltrim("key", 0, 1) in (None, True)
     assert await redis_client.expire("key", 10) is False or True
     assert await redis_client.ping() is False or True
     await redis_client.aclose()

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import PaginationParams, pagination_params, require_roles
 from app.core.database import get_db
 from app.core.security import UserRole
-from app.models.asha import Alert, HighRiskCase
+from app.models.alert import Alert, HighRiskCase
 from app.models.audit import AuditLog
 from app.models.caregiver import CaregiverContent
 from app.models.chat import ChatMessage

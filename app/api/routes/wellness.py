@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import PaginationParams, get_current_user, pagination_params, require_roles
@@ -223,9 +223,10 @@ async def get_profile(user: User = Depends(get_current_user), db: AsyncSession =
 
     elif user.role == UserRole.CAREGIVER:
         linked_mother = None
-        caregiver_status = "pending"
+        caregiver_status = "not_linked"
         relationship_label = user.relationship_label or "Caregiver"
 
+        mth = None
         if user.assigned_mother_id:
             mth = await db.scalar(
                 select(User).where(
@@ -236,23 +237,43 @@ async def get_profile(user: User = Depends(get_current_user), db: AsyncSession =
                     ),
                 )
             )
-            if mth:
-                linked_mother = {"id": str(mth.id), "name": mth.name, "custom_id": mth.custom_id}
-                cca = await db.scalar(
-                    select(CareCircleAccess).where(
-                        CareCircleAccess.user_id == mth.id,
-                        CareCircleAccess.requester_id == user.id,
-                        CareCircleAccess.revoked_at.is_(None),
-                    )
-                )
-                if cca:
+
+        cca = None
+        if mth:
+            cca = await db.scalar(
+                select(CareCircleAccess).where(
+                    CareCircleAccess.user_id == mth.id,
+                    CareCircleAccess.requester_id == user.id,
+                ).order_by(CareCircleAccess.requested_at.desc())
+            )
+        else:
+            # Fallback: check if connected via CareCircle QR code / invite
+            cca = await db.scalar(
+                select(CareCircleAccess).where(
+                    CareCircleAccess.requester_id == user.id,
+                ).order_by(CareCircleAccess.requested_at.desc())
+            )
+            if cca:
+                mth = await db.get(User, cca.user_id)
+
+        if mth:
+            linked_mother = {"id": str(mth.id), "name": mth.name, "custom_id": mth.custom_id}
+            if cca:
+                if cca.revoked_at is not None or cca.status == "revoked":
+                    caregiver_status = "revoked"
+                else:
                     caregiver_status = cca.status
-                    if cca.relationship_label:
-                        relationship_label = cca.relationship_label
+
+                if cca.relationship_label:
+                    relationship_label = cca.relationship_label
+            else:
+                caregiver_status = "pending"
+        else:
+            caregiver_status = "not_linked"
 
         base_response.update({
             "caregiver_id": user.custom_id,
-            "assigned_mother_id": user.assigned_mother_id,
+            "assigned_mother_id": user.assigned_mother_id or (linked_mother["custom_id"] if linked_mother else None),
             "linked_mother": linked_mother,
             "caregiver_status": caregiver_status,
             "relationship_label": relationship_label,

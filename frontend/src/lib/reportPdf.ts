@@ -329,7 +329,7 @@ export function printOrSaveClinicalReport(data: ReportExportData) {
 
   <div class="disclaimer">
     <strong>⚠️ Medical Disclaimer & Clinical Safety Notice</strong>
-    NurtureHer AI provides risk indication, early screening support, and structured educational summaries based on clinical risk frameworks. It does NOT provide a medical diagnosis, prescription, or clinical treatment. Always consult a qualified healthcare professional, ASHA worker, obstetrician, or doctor for clinical confirmation and care. In case of acute pain, heavy bleeding, breathing distress, or crisis thoughts, immediately dial emergency services (112) or visit the nearest hospital.
+    NurtureHer AI provides risk indication, early screening support, and structured educational summaries based on clinical risk frameworks. It does NOT provide a medical diagnosis, prescription, or clinical treatment. Always consult a qualified healthcare professional, obstetrician, or doctor for clinical confirmation and care. In case of acute pain, heavy bleeding, breathing distress, or crisis thoughts, immediately dial emergency services (112) or visit the nearest hospital.
   </div>
 </body>
 </html>

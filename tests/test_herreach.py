@@ -205,7 +205,6 @@ async def test_herreach_mother_recommendations_empty_assessments():
 @pytest.mark.asyncio
 async def test_herreach_pincode_560096_search_and_keyword_mapping(monkeypatch):
     """Verify PIN 560096 uses postal_code component geocoding, 'hospital' keyword, and maps facilities."""
-    from unittest.mock import MagicMock
     from app.services.herreach import GOOGLE_KEYWORD_MAP
 
     # Confirm keyword map is clean "hospital", not overly restrictive "hospital multi-specialty"

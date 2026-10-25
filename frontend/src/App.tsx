@@ -46,6 +46,7 @@ export default function App() {
           <Route path="/login" element={<AuthPage initialMode="login" />} />
           <Route path="/register" element={<AuthPage initialMode="register" />} />
           <Route path="/internal/admin/login" element={<AuthPage initialMode="login" adminOnly />} />
+          <Route path="/admin" element={<Navigate to="/internal/admin/login" replace />} />
           <Route path="/demo" element={<DemoPage />} />
           <Route path="/library" element={<EducationLibraryPage />} />
           <Route path="/offline-library" element={<EducationLibraryPage />} />

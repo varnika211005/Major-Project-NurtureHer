@@ -229,7 +229,7 @@ export function CareCircleQRPage() {
                 <Badge className="mb-2">ACTIVE ACCESS TOKEN</Badge>
                 <h2 className="text-lg font-black text-ink dark:text-white">Your Personal CareCircle QR</h2>
                 <p className="mt-1 text-xs text-muted">
-                  Share with your spouse, trusted caregiver, or ASHA worker
+                  Share with your spouse, family member, or trusted caregiver
                 </p>
 
                 {/* QR Code Container */}
@@ -394,7 +394,7 @@ export function CareCircleQRPage() {
               {requests.length === 0 ? (
                 <EmptyState
                   title="No Access Requests Yet"
-                  text="When a family caregiver, doctor, or ASHA worker scans your CareCircle QR code, their connection request will appear here for your approval."
+                  text="When a family caregiver or doctor scans your CareCircle QR code, their connection request will appear here for your approval."
                 />
               ) : (
                 <div className="space-y-4">
